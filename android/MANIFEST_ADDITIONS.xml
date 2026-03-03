@@ -1,0 +1,57 @@
+<!--
+  ════════════════════════════════════════════════════════════
+  P5 + P6: AndroidManifest.xml 추가 항목
+  기존 AndroidManifest.xml의 <application> 블록 안에 아래 내용 추가
+  ════════════════════════════════════════════════════════════
+-->
+
+<!-- ═══ P6: 홈 위젯 4×2 (#40) ═══ -->
+<receiver
+    android:name=".CheonhongWidgetCalendar"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_info_calendar" />
+</receiver>
+
+<!-- ═══ P6: 홈 위젯 2×2 (#41) ═══ -->
+<receiver
+    android:name=".CheonhongWidget2x2"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+    </intent-filter>
+    <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_info_2x2" />
+</receiver>
+
+<!--
+  ════════════════════════════════════════════════════════════
+  P5 + P6: AndroidManifest.xml 추가 권한
+  기존 <manifest> 안 최상위에 추가
+  ════════════════════════════════════════════════════════════
+-->
+
+<!-- P5: 그레이스케일 제어 (ADB로 부여) -->
+<!-- adb shell pm grant com.cheonhong.cheonhong_studio android.permission.WRITE_SECURE_SETTINGS -->
+
+<!-- P6: WorkManager 부팅 시 자동 시작 -->
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+<!--
+  ════════════════════════════════════════════════════════════
+  MainActivity.kt 추가 항목
+  configureFlutterEngine() 안에 아래 코드 추가
+  ════════════════════════════════════════════════════════════
+-->
+<!--
+    // P5: 수면 관리 채널
+    SleepChannel(this).register(flutterEngine)
+
+    // P5: Tasker 연동 채널
+    TaskerChannel(this).register(flutterEngine)
+-->

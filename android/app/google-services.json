@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "241623003531",
+    "project_id": "cheonhong-studio",
+    "storage_bucket": "cheonhong-studio.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:241623003531:android:b27e90816d5c2ba832ff8e",
+        "android_client_info": {
+          "package_name": "com.cheonhong.cheonhong_studio"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "241623003531-tr50998g81cvap32ftl640q6ii3q64eu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIqOJ2Qh_wdwa8ZxVVzjZB-MecWjnog68"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "241623003531-tr50998g81cvap32ftl640q6ii3q64eu.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "241623003531-bp5fiksr0oue31iuofe4j6mp2j8ki92t.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.cheonhong.cheonhongStudio"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
