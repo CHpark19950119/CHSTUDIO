@@ -1,14 +1,14 @@
 {
   "meta": {
-    "version": "v12",
-    "subtitle": "1995.01.19 — 군포 | 13,315건 (2013–2026) | 14호기 — 2013~2018 거래내역 전수 인터뷰 완료",
+    "version": "v13",
+    "subtitle": "1995.01.19 — 군포 | 13,315건 (2013–2026) | 15호기 — 성적 심리 심층 + \"구조 안에서의 자유\" 확정",
     "totalTransactions": 13315,
     "totalExpense": "1.25억",
     "pcBangVisits": 714,
     "relationships": "14명",
     "recordRange": "1995~현재",
     "lastModified": "2026.03.15",
-    "headerQuote": "그때는 열심히 뭔가를 해보려고 했어. 지금은 숨고 싶어진다."
+    "headerQuote": "숨기면 죄, 드러내면 해방. 문제는 행위가 아니라 은폐였다."
   },
 
   "timeline": [

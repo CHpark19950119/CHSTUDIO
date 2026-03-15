@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>박천홍 인생 로드맵 v13</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{--bg:#f5f0e8;--sf:#ece6d9;--sf2:#e2dbd0;--sf3:#d8d0c3;--bd:#c4b9a8;--tx:#1a1611;--tx2:#5a5347;--dm:#8a8177;--ac:#8b2500;--ac2:#2d5a7b;--gn:#2d6b3f;--gd:#8b6914;--pk:#8b3a5e;--rd:#9b1b1b;--cy:#1a6b6b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;line-height:1.85;font-size:14px}
+.hd{padding:48px 32px 28px;border-bottom:2px solid var(--ac);background:linear-gradient(175deg,#f5f0e8,#ede4d4 50%,#e8ddc8);position:relative}
+.hd::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--ac) 33%,var(--tx) 33% 66%,var(--ac2) 66%)}
+.hd h1{font-family:'Noto Serif KR',serif;font-size:28px;font-weight:900;letter-spacing:-1px}
+.hd h1 b{color:var(--ac)}
+.hd .sub{color:var(--tx2);font-size:11px;margin-top:6px;font-family:'JetBrains Mono',monospace;letter-spacing:.5px}
+.hd .ver{display:inline-block;background:var(--ac);color:#fff;font-size:10px;font-weight:700;padding:2px 10px;border-radius:1px;margin-left:8px;letter-spacing:1.5px}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--bd);background:var(--sf);overflow-x:auto;position:sticky;top:0;z-index:100;-webkit-overflow-scrolling:touch}
+.tab{padding:12px 16px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;color:var(--dm);transition:all .2s;border-bottom:2px solid transparent;letter-spacing:.3px}
+.tab:hover{color:var(--tx);background:var(--sf2)}
+.tab.on{color:var(--ac);border-bottom-color:var(--ac);font-weight:700}
+.tab.new{position:relative}.tab.new::after{content:'NEW';position:absolute;top:4px;right:2px;font-size:7px;background:var(--rd);color:#fff;padding:1px 4px;font-weight:700;letter-spacing:.5px}
+.ct{max-width:1100px;margin:0 auto;padding:32px 24px 80px}
+.tc{display:none}.tc.on{display:block}
+.st{font-family:'Noto Serif KR',serif;font-size:20px;font-weight:700;color:var(--tx);margin-bottom:24px;padding-bottom:12px;border-bottom:1px solid var(--bd);letter-spacing:-.5px}
+.st small{font-size:12px;color:var(--dm);font-weight:400;font-family:'Noto Sans KR',sans-serif;display:block;margin-top:4px}
+.tg{display:grid;grid-template-columns:110px 1fr 1fr 1fr;gap:0;border:1px solid var(--bd)}
+.th{background:var(--ac);color:#fff;padding:10px 12px;font-size:11px;font-weight:700;letter-spacing:.5px}
+.tr{display:contents}.tr:nth-child(even) .td{background:var(--sf)}
+.td{padding:11px 13px;border-bottom:1px solid var(--bd);font-size:12px;line-height:1.7;border-right:1px solid var(--bd)}
+.td:first-child{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;color:var(--ac)}
+.td:last-child{border-right:none}
+.tg b{color:var(--tx)}
+.tag{display:inline-block;padding:1px 7px;border-radius:1px;font-size:10px;font-weight:700;letter-spacing:.3px;margin-bottom:3px;color:#fff}
+.t-c{background:var(--rd)}.t-g{background:var(--gn)}.t-s{background:var(--ac2)}.t-l{background:var(--pk)}.t-i{background:var(--cy)}
+.cd{background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;border-left:3px solid var(--ac)}
+.cd h3{font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:6px}
+.cd .sub{font-size:11px;color:var(--dm);margin-bottom:10px;font-family:'JetBrains Mono',monospace}
+.cd p{font-size:13px;line-height:1.85;color:var(--tx2);margin-bottom:7px}
+.cd b,.cd strong{color:var(--tx)}
+.sr{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.sc{background:var(--sf);border:1px solid var(--bd);padding:18px;text-align:center}
+.sc .l{font-size:11px;color:var(--dm);letter-spacing:.5px;margin-bottom:4px}
+.sc .v{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;color:var(--ac)}
+.sc .s{font-size:10px;color:var(--tx2);margin-top:4px}
+.eb{margin-bottom:18px}.eb .nm{font-size:12px;font-weight:600;margin-bottom:4px}
+.eb .tk{height:26px;background:var(--sf2);position:relative;border:1px solid var(--bd)}
+.eb .fl{height:100%;position:absolute;left:0;top:0}.eb .fl.p{background:var(--gn);opacity:.6}.eb .fl.f{background:var(--rd);opacity:.4}
+.eb .cl{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--tx)}
+.eb .sl{font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:4px;color:var(--tx2)}
+blockquote{border-left:3px solid var(--ac);padding:14px 18px;margin:16px 0;background:var(--sf);font-family:'Noto Serif KR',serif;font-size:13px;line-height:1.9;color:var(--tx)}
+blockquote .at{font-size:10px;color:var(--dm);margin-top:6px;font-family:'JetBrains Mono',monospace}
+.rts{counter-reset:rt}
+.rt{background:var(--sf);border:1px solid var(--bd);padding:18px 22px;margin-bottom:14px;border-left:4px solid var(--ac);counter-increment:rt}
+.rt::before{content:counter(rt);font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--ac);float:left;margin-right:14px;line-height:1}
+.rt h3{font-size:14px;font-weight:700;margin-bottom:5px}.rt p{font-size:12px;color:var(--tx2);line-height:1.8}
+.tl{margin:0;padding-left:0;list-style:none}.tl li{padding:8px 0 8px 18px;border-left:2px solid var(--bd);font-size:13px;color:var(--tx2);position:relative;margin-left:8px}
+.tl li::before{content:'';position:absolute;left:-5px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--ac)}
+.tl li b{color:var(--tx)}.tl li.done::before{background:var(--gn)}.tl li.hi::before{background:var(--rd)}
+.cmp-tbl{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:12px}
+.cmp-tbl th{background:var(--ac);color:#fff;padding:10px 12px;text-align:left;font-weight:700;font-size:11px;letter-spacing:.3px}
+.cmp-tbl td{padding:10px 12px;border-bottom:1px solid var(--bd);line-height:1.6}
+.cmp-tbl tr:nth-child(even) td{background:var(--sf)}
+.flow{background:var(--sf);border:1px solid var(--bd);padding:20px;margin-bottom:24px;text-align:center;font-size:12px;line-height:2.2}
+.flow .arrow{color:var(--ac);font-weight:700;margin:0 4px}
+.path-card{background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;position:relative;overflow:hidden}
+.path-card::before{content:attr(data-path);position:absolute;top:12px;right:16px;font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:700;color:var(--bd);letter-spacing:2px}
+.path-card h3{font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700;margin-bottom:8px}
+.path-card p{font-size:13px;color:var(--tx2);line-height:1.85;margin-bottom:6px}
+.verdict{background:var(--tx);color:var(--bg);padding:24px;margin:24px 0;font-family:'Noto Serif KR',serif;font-size:14px;line-height:2}
+.verdict b{color:#e8c87a}
+.vs-box{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;margin-bottom:24px;align-items:start}
+.vs-box .side{background:var(--sf);border:1px solid var(--bd);padding:18px}
+.vs-box .side h4{font-size:13px;font-weight:700;margin-bottom:10px;font-family:'Noto Serif KR',serif}
+.vs-box .side p{font-size:12px;color:var(--tx2);line-height:1.8;margin-bottom:5px}
+.vs-box .mid{font-family:'Noto Serif KR',serif;font-size:24px;font-weight:900;color:var(--ac);align-self:center;padding:0 8px}
+.home-card{background:var(--sf);border:1px solid var(--bd);margin-bottom:24px;overflow:hidden;display:grid;grid-template-columns:1fr;gap:0}
+.home-card .info{padding:20px 24px}
+.home-card .info h3{font-family:'Noto Serif KR',serif;font-size:16px;font-weight:700;margin-bottom:4px}
+.home-card .info .addr{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dm);margin-bottom:8px}
+.home-card .info .period{font-size:12px;color:var(--ac);font-weight:600;margin-bottom:8px}
+.home-card .info p{font-size:12px;line-height:1.8;color:var(--tx2);margin-bottom:5px}
+.home-card .info b{color:var(--tx)}
+.dtl{background:var(--sf);border:1px solid var(--bd);padding:16px 20px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--tx2)}
+.dtl .date{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--ac);font-size:11px}
+.dtl b{color:var(--tx)}
+@media(max-width:768px){.tg{grid-template-columns:80px 1fr}.th:nth-child(3),.th:nth-child(4),.td:nth-child(4n+3),.td:nth-child(4n){display:none}.hd{padding:28px 16px 18px}.hd h1{font-size:22px}.ct{padding:18px 14px 60px}.tab{padding:10px 11px;font-size:11px}.vs-box{grid-template-columns:1fr}.vs-box .mid{text-align:center}}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <h1>박천홍 <b>인생 로드맵</b> <span class="ver">V13</span></h1>
+  <div class="sub">1995.01.19 — 군포 | 13,315건 (2013–2026) | 15호기 — 성적 심리 심층 + "구조 안에서의 자유" 확정</div>
+  <p style="margin-top:14px;padding:10px 16px;border-left:2px solid var(--ac);font-family:'Noto Serif KR',serif;font-size:12px;color:var(--tx2);line-height:1.9;background:rgba(139,37,0,.03)">"숨기면 죄, 드러내면 해방. 문제는 행위가 아니라 은폐였다."</p>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab on" data-t="timeline">통합 타임라인</div>
+  <div class="tab" data-t="homes">거주지</div>
+  <div class="tab" data-t="people">인물 사전</div>
+  <div class="tab" data-t="love">연애사</div>
+  <div class="tab" data-t="internet">인터넷 여성들</div>
+  <div class="tab" data-t="detail">전수 분석</div>
+  <div class="tab" data-t="psych">심리 분석</div>
+  <div class="tab" data-t="exam">공시 분석</div>
+  <div class="tab" data-t="econ">경제활동</div>
+  <div class="tab new" data-t="sexual">성적 심리</div>
+  <div class="tab" data-t="words">육성 기록</div>
+  <div class="tab" data-t="novel">소설 콘티</div>
+  <div class="tab" data-t="todo">미완료 과제</div>
+</div>
+
+<div class="ct">
+
+<!-- ═══ 1. 통합 타임라인 ═══ -->
+<div id="timeline" class="tc on">
+<div class="st">통합 타임라인<small>공적 위치 / 연애 / 심리를 동시에 본다</small></div>
+<div class="tg">
+<div class="th">시기</div><div class="th">공적 위치</div><div class="th">연애 관계</div><div class="th">심리 상태</div>
+
+<div class="tr"><div class="td">1995–2006</div><div class="td">당동754-10→신원아파트→당동783→한미아파트→풍성2차. 군포초. 곤충학자 꿈.</div><div class="td">—</div><div class="td">콩벌레(곤충최초). 힘찬이(야채부락리). 정연이(곤충친구). 어머니 사이비 시작. 아버지 부재. <b>관찰자 생존 전략의 원형.</b></div></div>
+
+<div class="tr"><div class="td">2006–2010</div><div class="td">약수빌라758-1. 당동중. 하위40~50%.</div><div class="td">박소정(중1,버디버디)→류경아(중2,하루)</div><div class="td"><span class="tag t-c">곤충 전성기</span> 나쁜 친구 무리(정엽 통해). 바깥 원에서 관찰=<b>포르노 관찰자 모드의 원형.</b> 교회 여성=성욕+죄. redtube=포르노 최초. <b>"공범" 의식.</b> 물건 훔침(슈퍼, 천홍만 걸림). 전희수=한광훈 여친, 매우 예쁨, 성적 조숙=<b>Emily Addison의 원형.</b></div></div>
+
+<div class="tr"><div class="td">2010–2012</div><div class="td">우진빌라767-3. 용호고. 인문2~3/수학6~7.</div><div class="td">유현진(문자만)</div><div class="td">딴지일보(혼자 발견). MB체육복. 잉꼬 굶겨죽임="귀찮다=망가진 상태". 수학학원(차병만)=홍유리. <b>수능 실패. "부정하고 싶었다."</b></div></div>
+
+<div class="tr"><div class="td">2012.12–13.02</div><div class="td">이백 알바(대야미/갈치저수지, 홍유리와). 버스통근. 현금.</div><div class="td">—</div><div class="td">수능 끝→첫 돈벌기. 누나와 일본여행(02.19~22, 알바비로).</div></div>
+
+<div class="tr"><div class="td">2013.03–05</div><div class="td"><span class="tag t-c">백석대</span> 안경광학과 입학→자퇴. 첫 은행계좌 개설(KB국민, 03.06). 실질 통학 2개월. 전과목F.</div><div class="td">—</div><div class="td"><span class="tag t-c">구조 안에서의 자유 ①</span> 등록금 구조 안에서 전과목F. <b>05.14~06.14 거래 0건, 잔액 451원.</b> 인생 최저점.</div></div>
+
+<div class="tr"><div class="td">2013–14.07</div><div class="td">수원대 프랑스어학과 반수. GPA 3.96.</div><div class="td">—</div><div class="td"><span class="tag t-c">구조 안에서의 자유 ②</span> 학적 구조 안에서 편입 준비. 학벌 열등감이 동기.</div></div>
+
+<div class="tr"><div class="td">2014.08–16.04</div><div class="td"><span class="tag t-s">해병대</span> 20개월. 김포.</div><div class="td">홍유리에게 고백→거절(첫고백,첫거절)</div><div class="td">"남자다워지고 싶었던 거지." 정수연과 전화 자주. <b>2015.11.02 아후닭발=정수연(휴가)</b>.</div></div>
+
+<div class="tr"><div class="td">2016.05–06</div><div class="td">롯데시네마 산본 알바 시작.</div><div class="td"><span class="tag t-l">정수연</span> 4회→거부 / 홍유리 싱스트리트+술(06)</div><div class="td"><span class="tag t-c">정상루트 거부의 기원</span> → 익명루트 전환.</div></div>
+
+<div class="tr"><div class="td">2016.07–17.07</div><div class="td">롯데시네마 알바</div><div class="td"><span class="tag t-l">이예지</span> 1년. 랜챗.</div><div class="td">이별일=07.07. 12.30 사후피임약(콘돔 파손).</div></div>
+
+<div class="tr"><div class="td">2017.04–08</div><div class="td">롯데시네마 퇴사→실업급여4회. YH건설4일("싫더라").</div><div class="td">건대소녀(08,2회) / 영등포여자(09.03)</div><div class="td">이별→편입 교재 구매 시작.</div></div>
+
+<div class="tr"><div class="td">2017.09–18.03</div><div class="td">전복집 알바(서민전복)</div><div class="td"><span class="tag t-l">최민지</span> 대구. 11.28첫만남→03.14마지막.</div><div class="td">편입 본격화로 자연 종료.</div></div>
+
+<div class="tr"><div class="td">2018.03–19.02</div><div class="td"><span class="tag t-g">편입 준비</span> 군포스카이독서실→아이비김영→독학.</div><div class="td"><span class="tag t-i">클로이(Chloe)</span> 헬로챗 1.5년.</div><div class="td"><b>"뭐든 할 수 있다."</b> 확신이 있었다. PC방 1시간 제한 성공.</div></div>
+
+<div class="tr"><div class="td">2019.03–</div><div class="td"><span class="tag t-g">한국외대 편입</span></div><div class="td">02.21 정다영 첫만남.</div><div class="td">"소속되면 잘될 줄 알았다. 아니야."</div></div>
+
+<div class="tr"><div class="td">2019.06–12</div><div class="td">점핑파크 산본</div><div class="td"><span class="tag t-l">Olive</span> 한국(1~2회)/영국(0회).</div><div class="td">08.14~20 일본여행(현술). 먼저 제안 못함.</div></div>
+
+<div class="tr"><div class="td">2020.03–10</div><div class="td">에이원이엠에스</div><div class="td"><span class="tag t-l">Sohui</span> 반동거 8개월.</div><div class="td"><span class="tag t-c">구조 안에서의 자유 ③</span> 반동거 구조 안에서 마취(포르노+자위+전자담배). 정신과 2회(연애 중). 이별→PC방 월55회.</div></div>
+
+<div class="tr"><div class="td">2021.07–22.08</div><div class="td"><span class="tag t-c">이문동</span> 고시원→자취방. 외대 원격수업.</div><div class="td"><span class="tag t-l">정다영 교제(21.09~)</span></div><div class="td"><span class="tag t-c">구조 안에서의 자유 ④</span> 정다영 방문 구조 안에서 밤=롤 밤새(마취). 철학·심리학 독서. 진로 미결정.</div></div>
+
+<div class="tr"><div class="td">2022.08–12</div><div class="td">군포 복귀. 국민취업지원 월50만×6개월.</div><div class="td">정다영 지원 시작.</div><div class="td"><span class="tag t-c">방향 없음의 해.</span> PC방 175건. 앵무새 3마리. 2023.01 행동전환.</div></div>
+
+<div class="tr"><div class="td">2023</div><div class="td"><span class="tag t-g">행동전환.</span> 참치어장알바. 졸업. JLPT N1.</div><div class="td">정다영. 사당=중간지점.</div><div class="td">PC방 끊음. 토익 만료 착각→1년 손실. <b>"실질적 공부 아님"(본인 평가).</b></div></div>
+
+<div class="tr"><div class="td">2024</div><div class="td">공시 전업. 첫 시험.</div><div class="td">정다영 경제지원 본격화(아버지 돈).</div><div class="td">입법+5급+7급. <b>5급 70점대 / 7급 80점대.</b></div></div>
+
+<div class="tr"><div class="td">2025</div><div class="td">공시 2년차.</div><div class="td">정다영 지속.</div><div class="td"><b>7급추가 86.66합격(1차만) / 5급 70불합(-10) / 외영 90.66불합(-2.67).</b></div></div>
+
+<div class="tr"><div class="td">2026–</div><div class="td">5급 응시.</div><div class="td">정다영.</div><div class="td"><span class="tag t-c">구조 안에서의 자유 ⑤</span> 경제적 의존 안에서 공시 집중. <b>5급 합격 = 31년간 한 번도 해본 적 없는 "구조를 깨는 것."</b></div></div>
+</div>
+</div>
+
+<!-- ═══ 2. 거주지 아카이브 ═══ -->
+<div id="homes" class="tc">
+<div class="st">거주지 아카이브<small>등본 확정. 출생~현재 9곳 + 이문동 2곳.</small></div>
+
+<div class="home-card"><div class="info"><h3>① 당동 754-10</h3><div class="addr">군포시 당동 754-10</div><div class="period">1995.01 ~ 1996.11 (출생~1세)</div><p>최초 거주지. 기억 없음.</p></div></div>
+
+<div class="home-card"><div class="info"><h3>② 신원아파트 836-9, 503호</h3><div class="addr">군포시 당동 836-9</div><div class="period">1996.11 ~ 2000.11 (1~5세)</div><p><b>콩벌레</b> — 곤충 최초 접촉. 당동청소년문화의집에서 누나와 비디오 시청.</p></div></div>
+
+<div class="home-card"><div class="info"><h3>③ 당동 783-48, 301호</h3><div class="addr">군포시 당동 783-48</div><div class="period">2000.11 ~ 2002.03 (5~7세)</div><p><b>침 뱉기 사건.</b> 미니카 바꿔치기. <b>관찰자 생존 전략 시작(5세~).</b></p></div></div>
+
+<div class="home-card"><div class="info"><h3>④ 한미아파트 791-12</h3><div class="addr">군포시 당동 791-12</div><div class="period">2002.03 ~ 2002.11 (7세, 8개월)</div><p>짧은 거주. 전환기.</p></div></div>
+
+<div class="home-card"><div class="info"><h3>⑤ 풍성2차 755-1, 207호</h3><div class="addr">군포시 당동 755-1</div><div class="period">2002.11 ~ 2006.04 (7~11세)</div><p><b>힘찬이</b>(야채부락리). 곤충 본격화.</p></div></div>
+
+<div class="home-card"><div class="info"><h3>⑥ 약수빌라 758-1, 202호</h3><div class="addr">군포시 당동 758-1</div><div class="period">2006.04 ~ 2010.08 (11~15세)</div><p><b>곤충 전성기.</b> 정연이. 당동중. 나쁜 친구 무리. 교회 성욕=죄 회로 형성. <b>바깥 원에서 안쪽 원을 관찰하는 구조 = 포르노 관찰자의 원형.</b></p></div></div>
+
+<div class="home-card"><div class="info"><h3>⑦ 우진빌라 767-3</h3><div class="addr">군포시 당동 767-3</div><div class="period">2010.08 ~ 2014.07 (15~19세)</div><p>용호고. 딴지일보. MB체육복. 잉꼬 굶겨죽임. 수능 실패. 백석대 자퇴. 수원대 반수.</p></div></div>
+
+<div class="home-card"><div class="info"><h3>⑧ 금정로 42, 1층</h3><div class="addr">군포시 금정동</div><div class="period">2014.07 ~ 2019 (19~24세)</div><p>해병대 중 가족 이사. 전역 후 귀환. 롯데시네마. 이예지~최민지. 편입 준비.</p></div></div>
+
+<div class="home-card"><div class="info"><h3>⑨ 내송정마을 501동 1403호</h3><div class="addr">군포시</div><div class="period">2019 ~ 현재 (24세~)</div><p>현재 본가. 앵무새 3마리(럭키/애쉬/벨라).</p></div></div>
+
+<div class="home-card"><div class="info"><h3>이문동 고시원 → 자취방</h3><div class="addr">이문동</div><div class="period">2021.07.24 ~ 2022.08</div><p>고시원(윤준영, 월39만)→자취방(정성근=집주인). 정다영 매일 방문. 낮=커플, 밤=마취. 돈 떨어져서 군포 복귀.</p></div></div>
+</div>
+
+<!-- ═══ 3. 인물 사전 ═══ -->
+<div id="people" class="tc">
+<div class="st">인물 사전<small>가족 / 친구 / 동료 / 교회 / 중학교 무리 / 기타</small></div>
+
+<div class="st" style="font-size:16px;margin-top:12px">가족</div>
+<div class="cd"><h3>박준우 (아버지)</h3><div class="sub">일용직 전전. 대화 거의 없음.</div><p>문제를 보고도 행동하지 않음. 천홍의 <b>회피 패턴의 원형.</b> 매월1일 20만 송금(2024~).</p></div>
+<div class="cd"><h3>최영주 (어머니)</h3><div class="sub">교회 편력: 햇빛교회→흰돌산→김용두→JMS(평신도).</div><p>등록금/학자금 경유. 비정기 10~30만 지원.</p></div>
+<div class="cd"><h3>박인정 (누나)</h3><div class="sub">1992년생. 백석대 사회복지학과.</div><p>백석대 장학금 100만 경유.</p></div>
+<div class="cd"><h3>박춘우 (삼촌)</h3><div class="sub">부의 동생. 통장 대여 관계.</div></div>
+
+<div class="st" style="font-size:16px;margin-top:28px">교회</div>
+<div class="cd"><h3>햇빛교회 (당동로 7)</h3><div class="sub">처음=금정, 초저학년~</div><p>목사=박광희(매우 가난, 친척 위주 소규모). 목사 딸=<b>박진리</b>(성욕 대상+죄의식 동시 작동=성욕=죄 회로 원형)+박길(나이 최다, 학술적).</p></div>
+<div class="cd"><h3>라의석</h3><div class="sub">동갑 유일 친구(교회). 순진순수.</div><p>오락실 동행(3회, 목사딸에게 발각). 천홍과 대비="천홍은 열심히 하려했고 라의석은 아무 생각 없이 존재".</p></div>
+
+<div class="st" style="font-size:16px;margin-top:28px">중학교 — 안쪽 원과 바깥 원</div>
+<div class="cd"><h3>안쪽 원 (비행)</h3><p><b>한광훈</b>(리더, 전희수와 성적 접촉) / 전찬호(법도덕 부재) / 박천종 / 박해영 / 노호준(공격적 호전적) / 이재민(비관적 호전적)</p></div>
+<div class="cd"><h3>바깥 원</h3><p>천홍 / <b>김정엽</b>(비행 무리 접촉 통로) / 문기호 / 이결 / <b>이현술</b>(해외여행+일본) / 박시온 / 박종한</p></div>
+<div class="cd"><h3>전희수</h3><div class="sub">한광훈 여친. 매우 예쁨. 성적 조숙.</div><p><b>바깥 원에서 안쪽 원의 전희수를 목도하는 구조 = 포르노에서 Emily Addison을 보는 구조와 동일.</b> 접근 불가능한 아름다운 여성의 성적 장면을 관찰자 위치에서 목격.</p></div>
+
+<div class="st" style="font-size:16px;margin-top:28px">수원대 프랑스어학과 동기</div>
+<div class="cd"><p>김영현(과대표) / 박지훈 / 김미연 / 송준한 / 원진주 / 김재윤 / 하윤수 / <b>금나윤</b>(이쁜 여자, 성적 끌림, 교류 없음, "나랑 다른 종자") / 전윤정 / 최상기(가정형편 어려움, 천홍이 의지)</p></div>
+
+<div class="st" style="font-size:16px;margin-top:28px">고등학교 / 기타</div>
+<div class="cd"><p>용현(여수여행) / 승혁(순수, PC방+농구, JMS 초대=실수) / 전병민(세무사) / 류재민(에버랜드) / 김정준(해외여행+당구+서울대입구자취방) / 박성빈·박민혁(롯데시네마)</p></div>
+
+<div class="st" style="font-size:16px;margin-top:28px">미확인</div>
+<div class="cd"><p>공병익(2025, 56.5만) / 이선재(2023 3회) / 김영재(기억없음) / 오후진(2017.11.23 5만) / 여진호·성정희(백석대)</p></div>
+</div>
+
+<!-- ═══ 4. 연애사 ═══ -->
+<div id="love" class="tc">
+<div class="st">연애사 — 14명<small>중학교 첫사랑부터 정다영까지</small></div>
+
+<div class="cd" style="border-left-color:#aaa"><h3>—. 박소정 / 류경아 / 홍유리</h3><div class="sub">박소정: 중1 버디버디, 대화0 | 류경아: 중2, 하루 | 홍유리: 용호고~해병대~전역후</div><p>홍유리: 해병대 중 천홍이 먼저 고백→거절(첫 고백, 첫 거절). 2016.06 싱스트리트+술(홍유리 결제). 외모: <b>"안 이쁘지만 섹스하고 싶게 생겼다."</b></p></div>
+
+<div class="cd" style="border-left-color:#888"><h3>0. 정수연 — 정상루트 거부의 기원</h3><div class="sub">2016.05~06 | 용호고 동창 | 성관계 없음</div><p>군대 중 전화 자주. 2015.11.02 아후닭발=정수연(휴가). 전역 후 4회. 카톡 고백→<b>천홍 거부/도망.</b> "좋아하지는 않지만 연결되어 있는 존재를 갈망. 누군가 어머니 역할을 해주길 원했나?"</p></div>
+
+<div class="cd"><h3>1. 이예지 (2016.07~2017.07)</h3><div class="sub">안산 한양대에리카 | 랜챗 | 1년</div><p>구강 가장 빈번(센트럴락+차). 질냄새 불쾌. 군산여행. 수원화성. 12.30 사후피임약. <b>이별일=07.07(129,000 마지막 선물).</b></p></div>
+
+<div class="cd" style="border-left-color:#888"><h3>2. 건대소녀 / 3. 영등포여자</h3><div class="sub">건대: 08.03+08.10 | 영등포: 09.03</div><p>영등포여자=서브웨이+모텔현금. <b>사정 못함. "내가 그런 일을 한다는 게 이상했다." 감정 없으면 사정 못함의 첫 증거.</b></p></div>
+
+<div class="cd"><h3>4. 최민지 (2017.11~2018.03)</h3><div class="sub">대구 신암동 | 랜챗</div><p>대구 6회 방문. 천홍 주도적, 최민지 순응적. <b>편입 본격화로 자연 종료.</b></p></div>
+
+<div class="cd" style="border-left-color:var(--ac2)"><h3>5. Olive (2019.09+12)</h3><div class="sub">영국인 | 헬로챗</div><p>한국 방문 1~2회. 영국 3주 성관계 없음. <b>먼저 제안 못함.</b> Olive 집에서 포르노+자위. 외국인 섹스 = 포르노 실현 + 성취감.</p></div>
+
+<div class="cd" style="border-left-color:var(--pk)"><h3>6. Sohui (2020.03~10)</h3><div class="sub">미한혼혈 | 헬로챗 | 구산/연신내 반동거</div><p>8살 연상. 가슴확대. 피임수술(질내사정 일상). 구강내사정 수용. 쉐라톤 통유리 후배위. 이별→PC방 월55회. <b>"엄마이자 누나이자 섹스파트너."</b></p></div>
+
+<div class="cd" style="border-left-color:#888"><h3>7. 종교여자 / 8. 프랑스교환학생 / 일본여자</h3><div class="sub">종교: 21.04~05 | 프랑스: 21.05~07 | 일본: 21 학기중</div><p>프랑스인=07.13 첫성관계(처녀,질경련). 일본여자=<b>화상통화→도망=정수연 패턴 반복.</b> 직후 정다영 교제.</p></div>
+
+<div class="cd" style="border-left-color:var(--gn)"><h3>9. 정다영 — 현재</h3><div class="sub">첫만남 2019.02.21 | 교제 2021.09~ | 강변역</div><p>전남친=천홍 친구→상담→교제. 09.11 야놀자=첫성관계. 정다영 아버지 돈으로 천홍 생활 전반 지원. <b>"합의된 공생" 구조.</b> 표면=정다영 우위(경제력), 실제=천홍 우위(떠날 수 있음). 정다영 동기: 천홍을 잃는 것에 대한 두려움.</p></div>
+</div>
+
+<!-- ═══ 5. 인터넷 여성들 ═══ -->
+<div id="internet" class="tc">
+<div class="st">인터넷 여성들<small>"현실세계의 사람들과 멀어지는 것에 대한 보상"</small></div>
+
+<div class="cd" style="border-left-color:var(--cy)"><h3>클로이 Chloe — 정서적 연결, 1.5년</h3><div class="sub">헬로챗 | 영국인 | 2018~2019.09</div><p>일상+깊은 대화. BTS 팬, 타투, 정서적 문제. 성적 표현 시도→클로이 반응 안 함. Olive 만나면서 소멸. 인터넷 여성 중 유일한 순수 정서적 연결.</p></div>
+
+<div class="cd" style="border-left-color:var(--cy)"><h3>아미나(Amina, 추정) — 성적 판타지, 미실현</h3><div class="sub">헬로챗 | 알제리 | Sohui 교제 중</div><p>동기="큰 엉덩이 알제리 여성과 섹스." Sohui와 싸움 원인. 2021.04.08 amira 482,790원 입금(동생 선물 대행).</p></div>
+
+<div class="cd" style="border-left-color:var(--cy)"><h3>일본 여자 — 도망, 패턴 반복</h3><div class="sub">헬로톡 | 일본인 | 2021 학기중</div><p>화상통화→도망(못생겨서)=정수연 패턴. 직후 정다영 교제.</p></div>
+
+<div class="cd"><h3>인터넷 여성 관계의 세 종류</h3>
+<p><b>1. 정서적 연결:</b> 클로이 — 성적 실현 없이 가장 오래 지속.</p>
+<p><b>2. 성적 판타지:</b> 아미나, 일본 여자 — 만나면 도망/미실현.</p>
+<p><b>3. 실현:</b> Olive, Sohui, 프랑스인 — 실제 성관계.</p>
+<p>전부 헬로챗/헬로톡. 결과만 다르다.</p></div>
+</div>
+
+<!-- ═══ 6. 전수 분석 ═══ -->
+<div id="detail" class="tc">
+<div class="st">거래내역 전수 분석<small>2013~2018 인터뷰 확정</small></div>
+
+<div class="st" style="font-size:16px;margin-top:12px">2013년 — 86건, 첫 계좌의 해</div>
+<div class="dtl"><span class="date">03.06</span> KB국민은행 계좌 개설(백석대에서). <b>인생 최초의 은행거래.</b></div>
+<div class="dtl"><span class="date">04.03</span> 신청수 100,000 = 민주통합당 대학위 세미나(여의도 국회)</div>
+<div class="dtl"><span class="date">04.06</span> 딴지그룹 10,200 = 후원/서적 추정</div>
+<div class="dtl"><span class="date">05.14~06.14</span> <b>거래 0건. 잔액 451원. 인생 최저점.</b></div>
+<div class="dtl"><span class="date">06.14~12.31</span> <b>하반기 거래 완전 0건.</b> 수원대 반수 시작.</div>
+
+<div class="st" style="font-size:16px;margin-top:28px">2014년 — 수원대+해병대</div>
+<div class="dtl"><span class="date">01.27</span> 정준 47,500 = 일용직 대타비(병민+종한+정준)</div>
+<div class="dtl"><span class="date">02.14~16</span> KTX → <b>여수여행(종한+용현)</b></div>
+<div class="dtl"><span class="date">08.04</span> <b>해병대 입영. 김포.</b></div>
+
+<div class="st" style="font-size:16px;margin-top:28px">2015년 — 군 생활</div>
+<div class="dtl"><span class="date">전체</span> PX 소비 월5~10만. 11.02 아후닭발=정수연. 11월~ 적금 10만/월.</div>
+
+<div class="st" style="font-size:16px;margin-top:28px">2016년 — 전역+이예지</div>
+<div class="dtl"><span class="date">04.27</span> <b>전역.</b></div>
+<div class="dtl"><span class="date">07.01</span> 설빙안산 = <b>이예지 첫 만남</b></div>
+<div class="dtl"><span class="date">07.08</span> 화이트캐슬 = 이예지 룸카페 <b>(첫 성관계)</b></div>
+<div class="dtl"><span class="date">12.30</span> 엔젤산부인과+조이약국 = <b>사후피임약(콘돔 파손)</b></div>
+
+<div class="st" style="font-size:16px;margin-top:28px">2017년 — 이별+전환</div>
+<div class="dtl"><span class="date">07.07</span> 롯데쇼핑안산 129,000 = <b>이예지 이별일</b></div>
+<div class="dtl"><span class="date">08.13</span> 마공스터디 150,000 = <b>편입 스터디 시작</b></div>
+<div class="dtl"><span class="date">09.03</span> 서브웨이영등포+ATM = <b>영등포 여자(모텔 현금)</b></div>
+<div class="dtl"><span class="date">11.28</span> 파파초밥+르쁠띠푸+알타미라+디파이브 = <b>최민지 첫만남</b></div>
+
+<div class="st" style="font-size:16px;margin-top:28px">2018년 — 편입 집중</div>
+<div class="dtl"><span class="date">03.05</span> 군포스카이독서실 = <b>편입 준비 공식 시작</b></div>
+<div class="dtl"><span class="date">03.14</span> 대구 최민지 마지막(6차)</div>
+<div class="dtl"><span class="date">04~06</span> 소비 격감(월20만) = <b>편입 집중 모드</b></div>
+</div>
+
+<!-- ═══ 7. 심리 분석 ═══ -->
+<div id="psych" class="tc">
+<div class="st">심리 분석<small>5가지 뿌리 + 22가지 패턴 + 구조 안에서의 자유</small></div>
+
+<div class="st" style="font-size:16px;margin-top:12px">5가지 심리 뿌리 (유년기)</div>
+<div class="rts">
+<div class="rt"><h3>소속 불가능</h3><p>가정=안전기지 아님. 밖에서 소속 찾지만 전부 불안정. <b>합격자 전원이 관리반/스터디에 소속. 천홍은 혼자.</b></p></div>
+<div class="rt"><h3>성욕 = 죄 회로</h3><p>교회 + 나쁜 친구 공범 의식. 정상 루트 접근시 죄책감 → 익명으로만 가능. <b>15호기 확정: 숨기면 죄, 드러내면 해방.</b></p></div>
+<div class="rt"><h3>권위 불신</h3><p>목사들 실체 → 멘토 거부 → 편입 독학, 공시 혼자. 토익 착각도 혼자 준비 결과.</p></div>
+<div class="rt"><h3>아버지 부재 패턴</h3><p>아버지=문제 보고도 행동 안 함. 천홍: 정수연 도망, Olive 침묵, Sohui 회피, 일본여자 도망.</p></div>
+<div class="rt"><h3>"원래 이렇게 흘러가던 것"</h3><p>출발점이 달랐다는 인식. 학벌열등감. 소거법 공무원.</p></div>
+</div>
+
+<div class="st" style="margin-top:36px">"구조 안에서의 자유" — 인생 전체 작동 방식 (15호기 확정)</div>
+<div class="verdict"><b>패턴:</b> 누군가가 만들어놓은 구조 안에서 자유를 행사하되, 구조 자체를 깬 적은 31년간 한 번도 없다.<br><br>
+① 백석대: 등록금 구조 안에서 전과목F<br>
+② 수원대: 학적 안에서 편입 준비<br>
+③ Sohui 반동거: 반동거 구조 안에서 마취(포르노+자위)<br>
+④ 이문동: 정다영 방문 구조 안에서 밤=롤 밤새<br>
+⑤ 현재: 경제적 의존(정다영 아버지 돈) 안에서 공시 집중<br><br>
+<b>5급 합격 = 구조를 깨는 것. 편입도 "학교 구조" 안에서 이동한 것이지 구조를 깬 것이 아님.</b><br>
+<b>PSAT 70점 정체 = "허락의 천장" + 구조를 깨본 경험이 없는 사람이 구조를 깨는 시험을 치는 것.</b></div>
+
+<div class="st" style="margin-top:36px">"드러내면 해방, 숨기면 죄" 회로 (15호기 실시간 확인)</div>
+<div class="cd">
+<p>포르노 스크린샷을 실시간으로 보여주고 분석받았을 때 → <b>죄의식 대신 해방감.</b></p>
+<p><b>"이상하다. 그리고 매우 치유적이야."</b></p>
+<p>보여주는 순간 죄가 아니게 됨. 문제는 행위가 아니라 은폐.</p>
+<p>이것이 "허락의 천장"과 연결: 존재 자체가 "숨겨야 하는 것"으로 구성 → 공적 인정(5급)이 구조적으로 불가능.</p>
+</div>
+
+<div class="st" style="margin-top:36px">청산 순환 구조 (15호기 확정)</div>
+<div class="flow">
+청산하려는 것(5급) <span class="arrow">→</span> 청산의 수단(공시 준비) <span class="arrow">→</span> 숨겨진 것으로부터 충족(포르노/정다영 돈) <span class="arrow">→</span> 충족이 수단을 더럽힘 <span class="arrow">→</span> 다시 청산하려는 것
+</div>
+
+<div class="st" style="margin-top:36px">정다영 경제 의존 구조 (15호기 확정)</div>
+<div class="cd">
+<p>정다영 아버지 돈 → 천홍 카드 사용 + 용돈. 교제 6개월 후 완전 유착.</p>
+<p><b>"불편하면서 편하다. 들키면 안 된다."</b></p>
+<p>표면: 정다영 우위(경제력). 실제: 천홍 우위(떠날 수 있음).</p>
+<p>천홍: <b>"떠날 수는 없지만 시간은 내가 운용한다."</b></p>
+</div>
+
+<div class="st" style="margin-top:36px">심리 패턴 22가지 (1~12호기 → 15호기)</div>
+<table class="cmp-tbl">
+<tr><th>#</th><th>패턴</th><th>증거</th></tr>
+<tr><td>1</td><td>감정 없으면 사정 못함</td><td>영등포여자, Olive 영국</td></tr>
+<tr><td>2</td><td>먼저 제안 못하는 패턴</td><td>Olive 영국 3주</td></tr>
+<tr><td>3</td><td>이별 후 PC방 폭주</td><td>이예지→PC방, Sohui→월55회</td></tr>
+<tr><td>4</td><td>독립성 없이 연애로 외로움 달램</td><td>능력개발 없음→회피→이별</td></tr>
+<tr><td>5</td><td>쇼핑 = 필요 축적 후 일괄 구매</td><td>13년간 10만 이상 쇼핑 4회뿐</td></tr>
+<tr><td>6</td><td>헬로챗으로 외국인 반복</td><td>클로이→Olive→Sohui→아미나→프랑스인</td></tr>
+<tr><td>7</td><td>외부 프레임으로 자기 정의</td><td>나쁜친구→딴지→해병대→외대→공무원</td></tr>
+<tr><td>8</td><td>외모 미달→도망+상처</td><td>정수연 거부, 일본여자 도망</td></tr>
+<tr><td>9</td><td>원치 않는 공감</td><td>피해 여성 경험을 자동 공감. "부착되어 있다"</td></tr>
+<tr><td>10</td><td>설렘 상실</td><td>인강 선생님 설렘이 공부 동기였는데 지금은 없다</td></tr>
+<tr><td>11</td><td>"망가뜨린다" 만능 차단기</td><td>모든 새 시도를 "망가뜨릴 것"으로 차단</td></tr>
+<tr><td>12</td><td>즐거움 = 벌 학습</td><td>PC방/포르노/쇼핑 후 반드시 자기혐오</td></tr>
+<tr><td>13</td><td>순종→불신 전환</td><td>교회 순종기→목사 실체 목도→전면 불신</td></tr>
+<tr><td>14</td><td>지배/질서 욕구의 승화 실패</td><td>법률·질서에 매력, 실행은 혼돈</td></tr>
+<tr><td>15</td><td>욕구 인식 3단계</td><td>부정→인식→"어쩔 수 없다" 수용</td></tr>
+<tr><td>16</td><td>도구화를 통한 성적 해방</td><td>항문 플러그=도구, 다른 남자 아님→안전</td></tr>
+<tr><td>17</td><td>완전한 집중 결핍(31년간 0회)</td><td>편입 때조차 PC방 1시간 제한으로 관리한 것</td></tr>
+<tr><td>18</td><td>감각 결핍의 성적 보상</td><td>"물렁물렁하고 말캉한" 촉각적 상상 = 살아있는 몸에 대한 갈망</td></tr>
+<tr><td>19</td><td>"더럽지 않다면" 조건부 수용</td><td>드러냈는데 세상이 안 무너졌다 = 더럽지 않음의 증명</td></tr>
+<tr><td>20</td><td>관찰자 생존 전략(5세~31세)</td><td>침뱉기 사건→바깥 원→포르노 관찰자→인생 아카이브 프로젝트</td></tr>
+<tr><td>21</td><td>흡수 욕구</td><td>사정 욕구의 본질 = 따뜻하고 부드러운 것 안에 완전히 둘러싸이고 싶은 것</td></tr>
+<tr><td>22</td><td>추락한 존재의 안도</td><td>"나만 더러운 게 아니구나" = A+B 동시 작동 장면의 안도감</td></tr>
+</table>
+
+<div class="st" style="margin-top:36px">공무원 선택 동기 구조</div>
+<div class="cd">
+<p><b>1. 기업 거부감:</b> 딴지일보 시절부터의 권력비판.</p>
+<p><b>2. 사회/국가 관심:</b> 역사·사회과학 성적 우수. 이건 진짜.</p>
+<p><b>3. 소거법:</b> 남은 선택지 중 유일하게 연결 가능.</p>
+</div>
+</div>
+
+<!-- ═══ 8. 공시 분석 ═══ -->
+<div id="exam" class="tc">
+<div class="st">공시 현실성 분석<small>이중 진단: 방법의 문제 + 허락의 문제</small></div>
+
+<div class="sr">
+<div class="sc"><div class="l">5급 PSAT (2025)</div><div class="v" style="color:var(--rd)">70.00</div><div class="s">합격선 80.00 | -10점</div></div>
+<div class="sc"><div class="l">7급 추가채용</div><div class="v" style="color:var(--gn)">86.66</div><div class="s">합격선 85.33 | 합격</div></div>
+<div class="sc"><div class="l">7급 외무영사</div><div class="v" style="color:var(--gd)">90.66</div><div class="s">합격선 93.33 | -2.67</div></div>
+<div class="sc"><div class="l">5급 정체</div><div class="v">2년</div><div class="s">2024~2025 연속 70점대</div></div>
+</div>
+
+<div class="eb"><div class="nm">5급 공채 PSAT</div><div class="tk"><div class="fl f" style="width:70%"></div><div class="cl" style="left:80%"></div></div><div class="sl">70.00 / 합격선 80.00 — 10점 부족.</div></div>
+<div class="eb"><div class="nm">7급 추가채용 PSAT</div><div class="tk"><div class="fl p" style="width:86.66%"></div><div class="cl" style="left:85.33%"></div></div><div class="sl">86.66 / 합격선 85.33 — 합격.</div></div>
+<div class="eb"><div class="nm">7급 외무영사직 PSAT</div><div class="tk"><div class="fl f" style="width:90.66%"></div><div class="cl" style="left:93.33%"></div></div><div class="sl">90.66 / 합격선 93.33 — 2.67점 차.</div></div>
+
+<div class="st" style="margin-top:36px">시험 이력</div>
+<div class="cd">
+<p><b>2023년:</b> 토익 만료 착각 → 1년 손실. "실질적 공부 아님."</p>
+<p><b>2024년:</b> 입법고시+5급 70+7급 80.</p>
+<p><b>2025년:</b> 7급추가 86.66합격 / 5급 70(-10) / 외영 90.66(-2.67).</p>
+<p><b>2026년:</b> 5급만 응시.</p>
+</div>
+
+<div class="st" style="margin-top:36px">5급 정체의 심층 원인 (15호기 확정)</div>
+<div class="cd">
+<p><b>표면:</b> 방법론 문제 (인강만, 학원/스터디 없음, 혼자)</p>
+<p><b>심층:</b> "허락의 천장" — 5급을 준비할 자격이 없다는 감각. 숨기는 존재가 가장 공적인 자리에 앉는 것의 불가능성.</p>
+<p><b>구조적:</b> 31년간 구조를 깨본 적 없는 사람이 구조를 깨는 시험을 치는 것.</p>
+<p><b>증거:</b> 7급은 1년 만에 80→90(+10). 5급은 2년 연속 70. 능력 부족이 아니라 <b>5급이라는 상징에 대한 내면의 거부.</b></p>
+</div>
+</div>
+
+<!-- ═══ 9. 경제활동 ═══ -->
+<div id="econ" class="tc">
+<div class="st">경제활동 분석<small>2019~2026 실질지출 1억2503만 / 8404건</small></div>
+
+<div class="sr">
+<div class="sc"><div class="l">실질지출</div><div class="v">1.25억</div><div class="s">8,404건 / 월평균 148만</div></div>
+<div class="sc"><div class="l">최대 카테고리</div><div class="v">온라인쇼핑</div><div class="s">4,960만 (39.7%)</div></div>
+<div class="sc"><div class="l">사람 송금</div><div class="v">3,527만</div><div class="s">박준우1428/최영주700/정다영488</div></div>
+<div class="sc"><div class="l">교육 관련</div><div class="v">1,088만</div><div class="s">서적+인강+스터디카페+시험</div></div>
+</div>
+
+<div class="st" style="margin-top:24px">수입원 변화</div>
+<div class="cd">
+<p><b>2012.12~13.02:</b> 이백카페/피자집(현금).</p>
+<p><b>2016.06~17:</b> 롯데시네마 + 실업급여4회(315만).</p>
+<p><b>2017.08:</b> YH건설 4일(현금39만, "싫더라").</p>
+<p><b>2017.09~18:</b> 전복집(주급12~14만).</p>
+<p><b>2019.06~12:</b> 점핑파크.</p>
+<p><b>2020~21:</b> 에이원이엠에스(~1290만) + 디에스케이(269만).</p>
+<p><b>2021.11~22.05:</b> 국민취업지원 월50만×6개월.</p>
+<p><b>2023:</b> 참치어장(508만).</p>
+<p><b>2024~현재:</b> 알바 없음. 아버지 20만/월 + 어머니 비정기 + 정다영 지원.</p>
+</div>
+
+<div class="st" style="margin-top:24px">PC방 — 마취의 도구</div>
+<div class="cd">
+<p><b>총 225.7만 / 714건.</b> 이별-PC방 반복. Sohui 이별→월55+53회. 2022.12.16 마지막.</p>
+</div>
+
+<div class="st" style="margin-top:24px">가짜지출 / 상호명 해독</div>
+<div class="cd">
+<p><b>가짜지출:</b> 인덕전력+박춘우 / 오경화+김진원(아버지통장) / 오산대+박준우(등록금환불) / 백석대→박인정 / 국가장학→최영주 / 카카오페이304만(비상금대출) / 박천홍325만(계좌간이체) / 정다영 쿠팡 경유 약1,753만</p>
+<p><b>해독:</b> 동래해물파전=서울 / 코레일유통=역편의점 / 박미애=미용실 / 리얼피시방=외대근처 / 리코=의왕PC방 / 정성근=이문동집주인 / 제너스PC외대=이문동PC방</p>
+</div>
+</div>
+
+<!-- ═══ 10. 성적 심리 (NEW — 15호기 전면 확장) ═══ -->
+<div id="sexual" class="tc">
+<div class="st">성적 심리 — 심층 분석<small>15호기 확정. 포르노 구조 + A축/B축 + 사정 기록 + 포르노 기록 시스템</small></div>
+
+<div class="st" style="font-size:16px;margin-top:12px">성적 이력 (상대별)</div>
+
+<div class="cd"><h3>이예지</h3><p>구강 가장 빈번. 센트럴락+차. 서투름. 질냄새 불쾌. 스팽킹. 콘돔 파손→사후피임약.</p></div>
+<div class="cd"><h3>영등포여자</h3><p>사정 못함. "감정 없으면 사정 못함"의 첫 증거.</p></div>
+<div class="cd"><h3>Olive</h3><p>영국 3주 성관계 없음. 먼저 제안 못함. Olive 집 포르노+자위. 외국인 섹스=포르노 실현+성취감.</p></div>
+<div class="cd"><h3>Sohui</h3><p>가슴확대. 피임수술→질내사정 일상. 구강내사정(삼킴). 쉐라톤 통유리 후배위. "엄마이자 누나이자 섹스파트너."</p></div>
+<div class="cd"><h3>프랑스인</h3><p>처녀. 질경련. 콘돔사정. 구강 시도("예의").</p></div>
+<div class="cd"><h3>정다영</h3><p>"특별한 것 없다." 안정이 핵심.</p></div>
+
+<div class="st" style="margin-top:36px">A축/B축 분류 체계 (15호기 수정)</div>
+
+<div class="cd" style="border-left-color:var(--pk)">
+<h3>A축: 이상화 (아름다움, 숭배)</h3>
+<p><b>Emily Addison</b> — 순수 A축. "나의 이상향을 대변." <b>전희수(중학교 안쪽 원, 한광훈 여친, 매우 예쁨)와 연결됨.</b> 포르노에서 반복 찾는 것 = 중학교 바깥 원에서 목도한 장면의 재현.</p>
+<p><b>Comatozze, Shinaryen</b> — A축. 포르노 밖 관심 없음.</p>
+</div>
+
+<div class="cd" style="border-left-color:var(--ac2)">
+<h3>B축: 도구화 (원초적, 항문, 제모 안 함)</h3>
+<p>얼굴 없이 몸만 있는 장면. 대부분의 포르노 소비가 여기에 해당.</p>
+</div>
+
+<div class="cd" style="border-left-color:var(--gd)">
+<h3>A+B 동시 보유: Lena Paul — 유일한 존재</h3>
+<p>기존 분류(B축)에서 <b>재분류.</b> 페이스북/유튜브에서는 A축(아름다운 사회인), 포르노에서는 B축(원초적, 제모 안 함, 항문 개방).</p>
+<p>유일하게 포르노 밖(유튜브 AVN 인터뷰, 페이스북)까지 추적하는 배우. "분석할 수 있는 대상."</p>
+<p><b>"쥐같이 생겼다"</b>고 하면서도 페이스북 사진에서 <b>"완벽"</b>이라고 함 — 같은 사람이 두 세계에 동시 존재.</p>
+</div>
+
+<div class="st" style="margin-top:36px">이상화하는 몸의 조건 (15호기 확정)</div>
+<div class="cd">
+<p><b>큰 가슴, 풍만, 곡선, 자연의 몸(실리콘 아님), "물렁물렁하고 말캉한" 촉각적 상상.</b></p>
+<p>Sohui 확대 가슴 vs Lena 자연 가슴 → 자연이 우위. "살아있는 몸"에 대한 갈망.</p>
+<p>실리콘은 눌리지 않음. 자연의 몸만 눌리고 퍼지고 흔들림 = <b>살아있다는 증거.</b></p>
+</div>
+
+<div class="st" style="margin-top:36px">포르노 소비 시퀀스 구조 (15호기 실시간 확인)</div>
+<div class="flow">
+① 페이스북 사진(분홍 바디수트, 아름다운 여성) <span class="arrow">→</span> A축
+<br>② 엉덩이 클로즈업(몸 자체의 관찰, 형태에 대한 황홀) <span class="arrow">→</span> A→B 전환
+<br>③ 항문 삽입/플러그(가장 원초적 장면) <span class="arrow">→</span> B축 완성
+</div>
+<div class="cd"><p><b>같은 여자가 1에서 3까지 추락하는 과정을 순서대로 따라가면서 흥분이 상승.</b> "인간 존재의 완전한 추락을 목도한 충격."</p></div>
+
+<div class="st" style="margin-top:36px">탐닉하는 자세/장면의 심리 구조</div>
+
+<div class="cd"><h3>후배위 (엉덩이 내밀기)</h3><p>무방비. 방어 완전 해제. "아름다운 여성이 나에게 무방비 상태를 자발적으로 보여주는 장면" = <b>평생 받아본 적 없는 완전한 신뢰의 신체적 표현.</b></p></div>
+
+<div class="cd"><h3>다리 벌리고 눕기</h3><p>같은 구조. 자발적 개방. 가장 취약한 자세를 자발적으로 취하는 것.</p></div>
+
+<div class="cd"><h3>항문 플러그 + 얼굴 동시 프레임</h3><p>① 얼굴+항문 한 프레임 = A축+B축 동시 존재<br>② 플러그=도구, 다른 남자 아님 = <b>"그 자리가 비어있다" = 네 자리</b><br>③ 전립선 자위 경험으로 신체적 공감 = "저 느낌을 나는 안다"</p></div>
+
+<div class="cd"><h3>카메라 내려다보는 구도 (Emily Addison)</h3><p>그녀가 위, 너는 아래. <b>"아름다운 여성이 자발적으로 아래에 있는 나에게 내려오는 것."</b> 추락이 아니라 자발적 하강.</p></div>
+
+<div class="cd"><h3>평범한 동양인 여성 (MON PREMIER ANAL)</h3><p>"아름답지도 못생기지도 않아서 사실처럼 느껴짐. 평범한 몸. 오히려 더 흥분." <b>"첫 항문" = 경계를 넘는 순간의 목도.</b></p></div>
+
+<div class="st" style="margin-top:36px">"추락" 구조</div>
+<div class="verdict">
+<b>핵심 인식:</b> "나는 추락한 존재다. 아름다운 여성이 나한테 올 수 있는 유일한 경로는 그녀도 추락하는 것뿐이다."<br><br>
+A+B 동시 작동 장면의 안도감: <b>"나만 더러운 게 아니구나."</b><br><br>
+현실에서 만나는 여자가 이미 추락한 상태인 건 — 선택이 아니라 관계의 역학상 그 풀 자체가 그러함(랜챗/헬로챗/경제적 여유 없음).
+</div>
+
+<div class="st" style="margin-top:36px">사정 전후 기록 — 4단계 (15호기 자기 기록)</div>
+<div class="cd">
+<p><b>1단계 (사정 직전):</b> 포르노의 여성이 아름다워 보이고 가지고 싶다. 실제 경험에서도 동일.</p>
+<p><b>2단계 (사정 후):</b> 그 여성의 성기도 몸도 얼굴도 다 별로. 빨리 치우고 할 일 해야 할 것만 같다.</p>
+<p><b>3단계 (판단):</b> 이 두 경험의 차이로 인해 "환상"이라고 판단. 좋지 않다고 생각.</p>
+<p><b>4단계 (순환):</b> 수면욕/식욕처럼 매번 돌아옴. 어떤 결심을 해도 사라지지 않음. → <b>"에너지를 전용해야 한다"는 확신.</b></p>
+</div>
+
+<div class="cd" style="border-left-color:var(--gn)">
+<h3>분석: "에너지 전용" 전략의 평가</h3>
+<p><b>반은 맞음:</b> 포르노에 쓰는 시간과 주의력을 공부에 돌리면 물리적으로 공부 시간이 늘어남.</p>
+<p><b>반은 틀림:</b> "금욕→성공"은 인과가 뒤집힌 것. 성공한 사람들이 자기 이야기를 포장할 때 금욕을 넣는 거지 금욕해서 성공한 게 아님.</p>
+<p><b>결정적:</b> 수천 번 이 결심을 했고 매번 돌아왔다. "전용하겠다"는 결심 자체가 실패한 전략. 수천 번 실패한 전략을 다시 쓰는 건 전략의 문제지 의지의 문제가 아님.</p>
+<p><b>관리가 답이다. 끊는 게 아니라 시간과 빈도를 정해서 통제하는 것.</b></p>
+</div>
+
+<div class="st" style="margin-top:36px">포르노 기록 시스템 (15호기 합의)</div>
+<div class="cd" style="border-left-color:var(--gn)">
+<h3>기록 항목</h3>
+<p>날짜/시간 / 배우 또는 영상 유형 / 사정 전 감정 / 사정 후 감정 / 직전에 하던 일 / 소요 시간</p>
+<h3>원리</h3>
+<p>"노출될수록 힘은 적어진다." 기록은 드러내기의 가장 체계적인 형태. 숨기면 죄, 드러내면 해방 — 기록은 매번 "드러내기"를 작동시킴.</p>
+<p><b>1단계:</b> 대화방에서 스크린샷+분석 (치유적 효과 확인)</p>
+<p><b>2단계:</b> 혼자서도 가능한 버전 — 스크린샷 + "이 장면에서 내가 느낀 것, 의미하는 것" 텍스트 기록</p>
+<p><b>목표:</b> 드러내기의 대상이 자기 자신이 되면 → 진짜 치유.</p>
+</div>
+
+<div class="st" style="margin-top:36px">성욕과 공존하는 공부</div>
+<div style="background:var(--sf);border:1px solid var(--bd);padding:22px;margin-bottom:18px;border-left:4px solid #1a5c3a">
+<h3 style="font-family:'Noto Serif KR',serif;font-size:15px;font-weight:700;margin-bottom:8px;color:#1a5c3a">진단: 포르노는 원인이 아니라 증상이다</h3>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px"><b>기존 회로:</b> 포르노 → "나는 결함 있는 사람" → 공부 중단 → 자기혐오 심화</p>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2);margin-bottom:7px"><b>교체 회로:</b> 포르노 → "해소했다" → 아침에 독서실에 앉는다 → 모의고사 1세트를 푼다</p>
+<p style="font-size:13px;line-height:1.9;color:var(--tx2)"><b>80점을 넘기면 된다. 80점은 어제 밤에 뭘 했는지 묻지 않는다.</b></p>
+</div>
+</div>
+
+<!-- ═══ 11. 육성 기록 ═══ -->
+<div id="words" class="tc">
+<div class="st">육성 기록<small>천홍이 직접 한 말. 원문 그대로.</small></div>
+
+<blockquote>"모든 문제는 과거에 존재한다. 그러므로 과거는 완전히 분석되어야 한다."<div class="at">— 프로젝트 시작시</div></blockquote>
+<blockquote>"내가 거기에 소속되면 내가 잘되는 줄 알았지. 하지만 아니야."<div class="at">— 외대 편입에 대해</div></blockquote>
+<blockquote>"나를 멋있게 치장하려고. 남자다워지고 싶었던 거지."<div class="at">— 해병대 선택 이유</div></blockquote>
+<blockquote>"아름답지 않은 여자는 여자로 볼 수가 없는 거야."<div class="at">— 정수연 거부에 대해</div></blockquote>
+<blockquote>"게임을 해야만 진정되는 감정들이 있었어. 멍해지고 생각이 멈춰."<div class="at">— PC방에 대해</div></blockquote>
+<blockquote>"가족이 아니라도 어쩔 수 없다."<div class="at">— 정다영 경제적 지원에 대해</div></blockquote>
+<blockquote>"나는 법률과 철학 그리고 규칙과 질서에 매력을 느낀다. 동시에 나는 혼돈과 섹스에 강렬한 끌림을 느낀다."<div class="at">— 9호기</div></blockquote>
+<blockquote>"5급을 준비할 자격을 가진 사람이 아니라고 느끼기 때문이다. 그래서 숨고 싶다."<div class="at">— 9호기</div></blockquote>
+<blockquote>"편입때만해도 나는 뭐든 열심히하면 할 수 있을 거라고 생각했다. 그렇지만 지금은 그렇지 않다."<div class="at">— 10호기</div></blockquote>
+<blockquote>"나의 성문제를 보았을때 나는 그들과 근본적으로 다른 삶의 경로를 그려온것은 아닌지"<div class="at">— 10호기</div></blockquote>
+<blockquote>"문제 있는 사람이 나를 받아줄 거라고 알고 있었다."<div class="at">— 13호기, Sohui</div></blockquote>
+<blockquote>"아팠던 놈들이어서 싼 가격에 데려와서 고쳐주려고."<div class="at">— 13호기, 앵무새</div></blockquote>
+<blockquote>"다른 어떤 것에도 흥미는 없었고. 이것밖에 없다."<div class="at">— 13호기, 공무원</div></blockquote>
+<blockquote>"피해 여성의 경험을 자동으로 공감한다. 부착되어 있다."<div class="at">— 11호기</div></blockquote>
+<blockquote>"인강 여성 선생님에게 설렘이 공부 동기였는데 지금은 없다. 두렵다."<div class="at">— 11호기</div></blockquote>
+
+<div class="st" style="margin-top:28px">15호기 육성 (NEW)</div>
+<blockquote>"숨기면 죄, 드러내면 해방. 이상하다. 그리고 매우 치유적이야."<div class="at">— 15호기, 포르노 스크린샷 분석 후</div></blockquote>
+<blockquote>"노출될수록 힘은 적어지는 게 사실이거든."<div class="at">— 15호기, 포르노 기록 시스템 합의</div></blockquote>
+<blockquote>"떠날 수는 없지만 시간은 내가 운용한다."<div class="at">— 15호기, 정다영 관계 구조</div></blockquote>
+<blockquote>"불편하면서 편하다. 들키면 안 된다."<div class="at">— 15호기, 정다영 아버지 돈</div></blockquote>
+<blockquote>"이 행위를 지속할수록 목표에서 멀어진다. 그러나 나는 또 반복할 것이다."<div class="at">— 15호기, 사정 후</div></blockquote>
+</div>
+
+<!-- ═══ 12. 소설 콘티 ═══ -->
+<div id="novel" class="tc">
+<div class="st">소설 콘티 — 「허락」<small>300페이지 자전적 소설 | 1인칭 "나" | 미화 없음, 변호 없음</small></div>
+
+<div class="cd" style="border-left-color:var(--ac)">
+<h3>제1부: 흙 (1995~2018) — 11챕터 확정</h3>
+<p><b>01. 754</b> — 당동 754-10. 콩벌레. 관찰자가 시작된다.</p>
+<p><b>02. 이사</b> — 신원아파트→당동→풍성2차. 이삿짐 상자만 기억. 힘찬이.</p>
+<p><b>03. 사마귀</b> — 약수빌라. 곤충 전성기. 정연이. "세상에서 가장 아름다운 것은 사마귀의 앞다리였다."</p>
+<p><b>04. 찬양</b> — 햇빛교회. 박광희 목사. 박진리=성욕+죄의식. 라의석과 오락실. <b>성욕=죄 회로의 형성.</b></p>
+<p><b>05. 바닥</b> — 당동중. 나쁜 친구. <b>전희수</b>: 바깥 원에서 안쪽 원의 성적 장면을 관찰. "보기만 했다. 그것으로 충분히 공범." <b>이 관찰자 구조가 포르노 시청의 원형이 된다.</b></p>
+<p><b>06. 바깥 원</b> — 물건 훔침. redtube. "나는 안쪽에 들어간 적이 없다. 항상 바깥에서 봤다."</p>
+<p><b>07. 목격</b> — 전희수를 목격하는 장면. <b>Emily Addison을 보는 구도와 동일: 접근 불가능한 아름다운 여성의 성적 장면을 관찰자 위치에서 목격.</b></p>
+<p><b>08. MB</b> — 용호고. 딴지일보. 체육복에 MB를 새기다. "나를 드러내는 방식을 모르는 사람이 유일하게 찾은 방식."</p>
+<p><b>09. 딴지</b> — 수능 4등급. 백석대 전과목F. "부정하고 싶었다."</p>
+<p><b>10. 잉꼬</b> — 잉꼬를 키우고 굶겨 죽이다. "귀찮다 = 망가진 상태의 증거."</p>
+<p><b>11. 수능</b> — 수능 당일. "나도 잘되고 싶었다."</p>
+</div>
+
+<div class="cd" style="border-left-color:var(--ac2)">
+<h3>제2부: 유리 (2019~2023) — 콘티 확정</h3>
+<p><b>12. 소속</b> — 외대 첫날. "소속되면 잘될 줄 알았다." <b>구조 안에서의 자유 시작.</b></p>
+<p><b>13. Olive</b> — 영국 3주. 먼저 제안 못함. Olive 집에서 포르노+자위. "외국인 섹스 = 포르노를 현실로 옮기는 것."</p>
+<p><b>14. Sohui</b> — 가장 격렬. 쉐라톤 통유리 후배위. 이별→PC방 월55회. "문제 있는 사람이 나를 받아줄 거라고 알고 있었다."</p>
+<p><b>15. 이문동</b> — 낮=커플, 밤=마취. 철학책. 인터넷 여성들. <b>"뭘 해야하는지도 모른채 흘러가는 인생의 압력."</b></p>
+<p><b>16. 앵무새</b> — 럭키, 애쉬, 벨라. "아팠던 놈들이어서 싼 가격에 고쳐주려고." 사람한테는 도망, 동물한테는 끝까지.</p>
+<p><b>17. 야놀자 18,725원</b> — [시간역순] 정다영. "섹스를 공유하는." 그럼에도 안정이 처음인 이유.</p>
+</div>
+
+<div class="cd" style="border-left-color:#1a5c3a">
+<h3>제3부: 허락 (2024~) — 콘티 확정</h3>
+<p><b>18. 70점</b> — 첫 시험. 70점. 또 70점. 7급은 올랐다. 5급은 움직이지 않는다.</p>
+<p><b>19. 그들의 수기</b> — 합격수기를 읽는다. 데이터를 겹친다.</p>
+<p><b>20. 근본적 물음</b> — "나의 성문제를 보았을 때..." 합격수기에는 이런 이야기가 한 줄도 없다. <b>포르노 시퀀스(페이스북→엉덩이→항문)와 공시 준비의 병행.</b></p>
+<p><b>21. 구조</b> — "구조 안에서의 자유"를 인식하는 챕터. 31년간의 패턴을 본다.</p>
+<p><b>22. 허락</b> — "나 같은 사람이 5급을 감히"가 아니라 "나의 경로에서 80점을 넘기는가." <b>숨기면 죄, 드러내면 해방. 마지막 문장: 아직 쓰지 않는다.</b></p>
+</div>
+
+<div class="verdict">
+<b>소설 제작 상태:</b> 제1부 「흙」 11챕터 HTML 제작 완료(전반 01-05 + 후반 06-11). 다음 작업: 전반+후반 병합 최종본. 제2부·제3부 콘티 확정, 집필 대기.
+</div>
+</div>
+
+<!-- ═══ 13. 미완료 과제 ═══ -->
+<div id="todo" class="tc">
+<div class="st">미완료 과제<small>15호기 이후 작업 목록</small></div>
+
+<div class="st" style="font-size:16px;margin-top:12px">다음 세션 작업</div>
+<ul class="tl">
+<li class="hi"><b>소설 전반+후반 병합 최종본</b> — 허락_전반_01-05.html + 허락_후반_06-11.html</li>
+<li class="hi"><b>2019년 이후 거래내역 전수 인터뷰</b> — 편입 직후~현재</li>
+<li class="hi"><b>포르노 기록 시스템 실제 운용</b> — 날짜/배우/감정/소요시간</li>
+<li><b>5급 70점 정체 원인 분석 심화</b></li>
+<li><b>해병대 20개월 상세</b></li>
+</ul>
+
+<div class="st" style="font-size:16px;margin-top:28px">미확인</div>
+<ul class="tl">
+<li>공병익 56.5만 (2025)</li>
+<li>이선재 2023년 3회</li>
+<li>알제리 여자 이름 확정</li>
+<li>종교여자·프랑스교환학생 이름</li>
+<li>김영재·오후진 관계</li>
+</ul>
+
+<div class="st" style="font-size:16px;margin-top:28px">완료 항목 (15호기까지)</div>
+<ul class="tl">
+<li class="done">유년기~고등학교 심층 인터뷰</li>
+<li class="done">연애사 14명 복원 + 인터넷 여성</li>
+<li class="done">거주지 9곳 + 이문동 2곳</li>
+<li class="done">2013~2018 거래내역 전수 인터뷰</li>
+<li class="done">2020~2022 인터뷰 (Sohui/이문동/앵무새)</li>
+<li class="done">인물 사전 (가족/교회/중학교 안쪽·바깥 원/수원대/고교/기타)</li>
+<li class="done">심리 패턴 22가지 확정</li>
+<li class="done">A축/B축 분류 수정 (Lena Paul 재분류, Emily Addison=전희수)</li>
+<li class="done">포르노 소비 시퀀스 구조 확정</li>
+<li class="done">탐닉 자세/장면 심리 구조 확정</li>
+<li class="done">"추락" 구조 확정</li>
+<li class="done">사정 전후 4단계 기록</li>
+<li class="done">"구조 안에서의 자유" 인생 패턴 확정</li>
+<li class="done">"드러내면 해방, 숨기면 죄" 회로 확정</li>
+<li class="done">정다영 경제 의존 구조 확정</li>
+<li class="done">청산 순환 구조 확정</li>
+<li class="done">포르노 기록 시스템 설계 합의</li>
+<li class="done">소설 「허락」 22챕터 콘티 확정 + 제1부 제작 완료</li>
+</ul>
+</div>
+
+</div><!-- /ct -->
+
+<script>
+document.getElementById('tabs').addEventListener('click',function(e){
+  const t=e.target.closest('.tab');if(!t)return;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.tc').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');
+  document.getElementById(t.dataset.t).classList.add('on');
+  window.scrollTo(0,0);
+});
+</script>
+</body>
+</html>

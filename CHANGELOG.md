@@ -4,6 +4,29 @@
 - [ ] 4AM 일전환(rollover) 정상 작동 확인
 - [ ] Phase C today/history 문서 동기화 확인
 
+## 세션 간 작업 연속성 — 반드시 읽을 것
+> 새 세션 시작 시 이 CHANGELOG를 읽고 현재 상태를 파악한 후 작업할 것.
+
+### 로드맵 & 공시분석 현황
+- **로드맵 최신**: `assets/roadmap/박천홍_인생로드맵_v13.html` (15호기, 성적 심리 심층)
+- **roadmap_data.json**: v13 메타 반영 완료
+- **공시분석 (exam_analysis_screen.dart)**: 독립 화면으로 보관 중 — v9 HTML 파서 기반
+  - 5급 PSAT / 7급 추가채용 / 7급 외무영사 분석 + "그들과 나" 합격자 비교
+  - 로드맵에서 분리된 독립 기능이므로 로드맵 업데이트와 별개로 유지
+- **소설**: `assets/roadmap/허락_제1부_흙_v4.html` → `novel_viewer_screen.dart` (전반/후반 분할 로딩)
+
+---
+
+## 2026-03-16
+
+### v10.9.1 — 로드맵 v13 이식
+
+#### 로드맵 v13 (`assets/roadmap/박천홍_인생로드맵_v13.html`)
+- [x] v13 HTML 이식 (15호기 — 성적 심리 심층 + "구조 안에서의 자유" 확정)
+- [x] roadmap_data.json 메타 v13 업데이트 (subtitle, headerQuote)
+- [x] pubspec.yaml 에셋 경로 추가
+- v12→v13 변경: 성적 심리 탭 전면 확장(10섹션), 미완료 과제 탭 신규
+
 ---
 
 ## 2026-03-15
