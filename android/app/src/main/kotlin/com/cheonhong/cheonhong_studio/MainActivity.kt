@@ -41,6 +41,7 @@ class MainActivity : FlutterActivity() {
     private val NFC_CHANNEL = "com.cheonhong.cheonhong_studio/nfc"
     private val BROWSER_CHANNEL = "com.cheonhong.cheonhong_studio/browser"
     private val SLEEP_CHANNEL = "com.cheonhong.cheonhong_studio/sleep"
+    private val BIXBY_CHANNEL = "com.cheonhong.cheonhong_studio/bixby"
     private var nfcChannel: MethodChannel? = null
     private var screenReceiver: android.content.BroadcastReceiver? = null
     private var flutterReadyForNfc: Boolean = false
@@ -343,6 +344,21 @@ handleNfcIntent(intent)?.let { payload ->
                     } else {
                         result.success(null)
                     }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // ─── 빅스비 연동 채널 ───
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BIXBY_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isNotificationListenerEnabled" -> {
+                    val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+                    result.success(flat?.contains(packageName) == true)
+                }
+                "openNotificationListenerSettings" -> {
+                    startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                    result.success(true)
                 }
                 else -> result.notImplemented()
             }

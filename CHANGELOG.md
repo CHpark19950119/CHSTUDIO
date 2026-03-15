@@ -6,6 +6,91 @@
 
 ---
 
+## 2026-03-15
+
+### v10.9.0 — 🛰️ CF 기상 감지 + FCM + 빅스비 자동 외출/귀가
+
+#### Cloud Functions 기상 감지 (`functions/index.js`)
+- [x] 문 열림 + 7시 이후 + 오늘 wake 미기록 → **서버에서 자동 기상 기록**
+- [x] Firestore today + study doc dual-write
+- [x] 텔레그램 양쪽 발송 (⏰ 자동 기상 HH:mm)
+- [x] FCM high-priority data message 발송 → 앱 깨우기
+- [x] **20분 외출 확정 체크** (`checkMovementPending`) — 매 폴링마다 pending 20분 경과 확인
+
+#### 빅스비 루틴 연동 (`BixbyNotificationListener.kt`)
+- [x] `NotificationListenerService` — CHSTUDIO_OUT / CHSTUDIO_HOME 감지
+- [x] OUT: `data/iot` movement.pending + GPS 1회 + leftAt/leftAtLocal 기록
+- [x] HOME (pending): 취소 (20분 미달, 기록 없음)
+- [x] HOME (confirmed): 귀가 기록 + data/study timeRecords + SharedPrefs + 텔레그램
+- [x] AndroidManifest: BIND_NOTIFICATION_LISTENER_SERVICE 등록
+
+#### FCM + Geofence Foreground Service (`fcm_service.dart`)
+- [x] `firebase_messaging` 패키지 추가
+- [x] FCM 토큰 등록 → Firestore `data/iot` fcmToken 필드
+- [x] `onBackgroundMessage` → wake + outing 타입 핸들링
+- [x] **`onMessage` 포그라운드 리스너** → wake/outing 즉시 앱 반영
+- [x] **`onMessageOpenedApp`** → 백그라운드→포그라운드 전환 시 반영
+- [x] `_GeofenceHandler`: 3분마다 GPS 체크, 150m 반경 기반 외출/귀가 감지
+
+#### NFC 상태 동기화 (`nfc_service.dart`)
+- [x] `WidgetsBindingObserver` + `didChangeAppLifecycleState` → resume 시 SharedPrefs 재로딩
+- [x] `prefs.reload()` — isolate 간 SharedPreferences 동기화
+- [x] `triggerRole()` public 메서드 — FCM/외부 트리거 진입점
+
+#### 헤드위그 봇 (`functions/index.js`)
+- [x] `buildHedwigMessage` movement 필드 우선 참조
+- [x] pending → "🚶 잠깐 나간 것 같아요... (확인 중)"
+- [x] out → "🧹 외출 중 (N분 전 출발)" + GPS 핀
+- [x] home → "🏰 집에 있어요 (귀가 N분 전)"
+
+#### 설정 UI (`settings_screen.dart`)
+- [x] 빅스비 연동 카드: 알림 접근 허용 버튼 + ON/OFF 상태
+
+#### 도어 센서 정리 (`door_sensor_service.dart`)
+- [x] 첫 스냅샷 무시 (`_firstSnapshot` 플래그) — 앱 시작 시 오탐 방지
+- [x] 텔레그램 알림 비활성화 (방문 센서 ≠ 현관문)
+
+#### 공시분석 완전 독립 (`exam_analysis_screen.dart`)
+- [x] Flame 배경 (보라 파티클 + 빛줄기) + 다크 프리미엄 테마
+- [x] **"그들과 나" 섹션 추가** — v9 합격자 9명 분석 통합
+- [x] V9 HTML 파서 뷰어 (`_V9CompareViewer`) — 각 합격자 카드 렌더링
+
+#### 인생경로 카드 모션 (`journey_screen.dart`)
+- [x] `elasticOut` → `easeOutQuint` slide-up + fade-in (프리미엄 모션)
+- [x] 공시분석 독립 카드 추가 (3번째 카드)
+
+---
+
+## 2026-03-14
+
+### v10.8.5 — 🚪 기상 감지: 방문 센서 기반
+
+#### Wake 감지 로직 변경 (`wake_service.dart`)
+- [x] 시간대 기반(6:30~13:00) → **DayState.idle + 7시 이후** 전환
+- [x] 7시 이후 첫 방문 열림 = 기상 (늦잠 대응, 상한 없음)
+- [x] 7시 이전 무시 (새벽 화장실 오탐 방지)
+- [x] 하루 1회 안전망 유지
+
+#### 설정 UI 정리 (`settings_screen.dart`)
+- [x] 시간대 피커/디버그 모드 UI 제거 (불필요)
+- [x] 설명 텍스트: "7시 이후 첫 문 열림 → 자동 기상"
+
+---
+
+### v10.8.4 — 소설 뷰어 분할 + 인생경로 화면
+
+#### 소설 뷰어 분할 (`novel_viewer_screen.dart`)
+- [x] HTML 전반/후반 분리 로딩 (대용량 파일 성능 개선)
+
+#### 인생경로 화면 (`journey_screen.dart`, `order_screen.dart`)
+- [x] JourneyScreen 신규 추가
+- [x] Order에서 인생경로 → JourneyScreen으로 라우팅 변경
+
+#### 에셋 (`pubspec.yaml`)
+- [x] 3개 HTML 에셋 경로 추가
+
+---
+
 ## 2026-03-13
 
 ### v10.8.3 — 🦉 헤드위그 (텔레그램 위치 봇) + Wake 시간대 설정

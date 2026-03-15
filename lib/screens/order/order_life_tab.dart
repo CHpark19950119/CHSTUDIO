@@ -8,7 +8,8 @@ import 'novel_viewer_screen.dart';
 /// 인생 로드맵 v11 — 12탭 (거주지/인터넷여성/2017~18전수 신규)
 /// ═══════════════════════════════════════════════════════════
 class OrderLifeTab extends StatefulWidget {
-  const OrderLifeTab({super.key});
+  final int initialTab;
+  const OrderLifeTab({super.key, this.initialTab = 0});
   @override
   State<OrderLifeTab> createState() => _OrderLifeTabState();
 }
@@ -43,7 +44,7 @@ class _OrderLifeTabState extends State<OrderLifeTab>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: _tabs.length, vsync: this);
+    _tabCtrl = TabController(length: _tabs.length, vsync: this, initialIndex: widget.initialTab.clamp(0, _tabs.length - 1));
     _loadData();
   }
 

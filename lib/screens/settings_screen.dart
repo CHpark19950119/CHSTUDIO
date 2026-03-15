@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
 import '../theme/botanical_theme.dart';
 import '../services/nfc_service.dart';
 import '../services/local_cache_service.dart';
@@ -18,12 +21,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _nfc = NfcService();
   final _sleepDetect = SleepDetectService();
   final _wake = WakeService();
+  static const _bixbyChannel = MethodChannel('com.cheonhong.cheonhong_studio/bixby');
   bool _loading = true;
   bool _sleepDetectEnabled = false;
-  bool _wakeDebugMode = false;
   String _wakeMode = 'sensor';
-  int _wakeStartMin = 390;
-  int _wakeEndMin = 780;
+  bool _notifListenerEnabled = false;
+  List<Map<String, dynamic>> _studyLocations = [];
 
   bool get _dk => Theme.of(context).brightness == Brightness.dark;
   Color get _textMain => _dk ? BotanicalColors.textMainDark : BotanicalColors.textMain;
@@ -51,10 +54,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     await _nfc.initialize();
     _sleepDetectEnabled = _sleepDetect.enabled;
-    _wakeDebugMode = _wake.debugMode;
     _wakeMode = _wake.mode;
-    _wakeStartMin = _wake.wakeStartMin;
-    _wakeEndMin = _wake.wakeEndMin;
+    try {
+      _notifListenerEnabled = await _bixbyChannel.invokeMethod<bool>('isNotificationListenerEnabled') ?? false;
+    } catch (_) {}
+    await _loadStudyLocations();
     _safeSetState(() => _loading = false);
   }
 
@@ -81,6 +85,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // ─── 수면 자동 감지 ───
               _sleepDetectCard(),
+              const SizedBox(height: 16),
+
+              // ─── 빅스비 연동 ───
+              _bixbyCard(),
+              const SizedBox(height: 16),
+
+              // ─── 공부 장소 ───
+              _studyLocationsCard(),
               const SizedBox(height: 16),
 
               // ─── 앱 정보 ───
@@ -157,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text('기상 감지', style: BotanicalTypo.body(
               size: 15, weight: FontWeight.w700, color: _textMain)),
             const SizedBox(height: 2),
-            Text(isSensor ? '도어센서 문 열림 → 자동 기상 (${_fmtMin(_wakeStartMin)}~${_fmtMin(_wakeEndMin)})' : '수동 버튼으로 기상 기록',
+            Text(isSensor ? '7시 이후 첫 문 열림 → 자동 기상' : '수동 버튼으로 기상 기록',
               style: BotanicalTypo.label(size: 11, color: _textMuted)),
           ])),
           // 모드 전환 칩
@@ -178,76 +190,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ]),
-        // 센서 모드 설정 (시간대 + 디버그)
+        // 센서 모드 — DayState idle 기반 (시간대 무관)
         if (isSensor) ...[
-          const SizedBox(height: 14),
-          // 감지 시간대
-          Row(children: [
-            const SizedBox(width: 60),
-            Text('감지 시간', style: BotanicalTypo.body(
-              size: 13, weight: FontWeight.w600, color: _textSub)),
-            const Spacer(),
-            _timeTapChip(_wakeStartMin, (m) async {
-              await _wake.setWakeWindow(m, _wakeEndMin);
-              _safeSetState(() => _wakeStartMin = m);
-            }),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Text('~', style: TextStyle(color: _textMuted, fontSize: 14)),
-            ),
-            _timeTapChip(_wakeEndMin, (m) async {
-              await _wake.setWakeWindow(_wakeStartMin, m);
-              _safeSetState(() => _wakeEndMin = m);
-            }),
-          ]),
           const SizedBox(height: 10),
-          // 디버그 모드
           Row(children: [
             const SizedBox(width: 60),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('디버그 모드', style: BotanicalTypo.body(
-                size: 13, weight: FontWeight.w600, color: _textSub)),
-              const SizedBox(height: 1),
-              Text('시간 조건 무시 (테스트용)', style: BotanicalTypo.label(
-                size: 10, color: _textMuted)),
-            ])),
-            Switch.adaptive(
-              value: _wakeDebugMode,
-              activeColor: const Color(0xFFf59e0b),
-              onChanged: (v) async {
-                await _wake.setDebugMode(v);
-                _safeSetState(() => _wakeDebugMode = v);
-              },
-            ),
+            Text('7시 이전 문 열림은 무시 (새벽 화장실 등)',
+              style: BotanicalTypo.label(size: 11, color: _textMuted)),
           ]),
         ],
       ]),
-    );
-  }
-
-  String _fmtMin(int m) =>
-      '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
-
-  Widget _timeTapChip(int minutes, Future<void> Function(int) onPicked) {
-    return GestureDetector(
-      onTap: () async {
-        final picked = await showTimePicker(
-          context: context,
-          initialTime: TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60),
-        );
-        if (picked != null) {
-          await onPicked(picked.hour * 60 + picked.minute);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: const Color(0xFFf59e0b).withOpacity(0.10),
-          borderRadius: BorderRadius.circular(10)),
-        child: Text(_fmtMin(minutes),
-          style: BotanicalTypo.label(size: 12, weight: FontWeight.w700,
-            color: const Color(0xFFf59e0b))),
-      ),
     );
   }
 
@@ -281,6 +233,316 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _safeSetState(() => _sleepDetectEnabled = v);
           },
         ),
+      ]),
+    );
+  }
+
+  // ═══ 빅스비 연동 카드 ═══
+  Widget _bixbyCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BotanicalDeco.card(_dk),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFF10b981).withOpacity(_dk ? 0.12 : 0.08),
+              borderRadius: BorderRadius.circular(14)),
+            child: const Icon(Icons.notifications_active_rounded, size: 24,
+              color: Color(0xFF10b981)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('빅스비 연동', style: BotanicalTypo.body(
+              size: 15, weight: FontWeight.w700, color: _textMain)),
+            const SizedBox(height: 2),
+            Text('알림 감지 → 자동 외출/귀가 (20분 확정)',
+              style: BotanicalTypo.label(size: 11, color: _textMuted)),
+          ])),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: (_notifListenerEnabled
+                ? const Color(0xFF10b981)
+                : BotanicalColors.error).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10)),
+            child: Text(_notifListenerEnabled ? 'ON' : 'OFF',
+              style: BotanicalTypo.label(size: 11, weight: FontWeight.w800,
+                color: _notifListenerEnabled
+                  ? const Color(0xFF10b981) : BotanicalColors.error)),
+          ),
+        ]),
+        const SizedBox(height: 14),
+        if (!_notifListenerEnabled)
+          GestureDetector(
+            onTap: () async {
+              try {
+                await _bixbyChannel.invokeMethod('openNotificationListenerSettings');
+              } catch (_) {}
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10b981).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF10b981).withOpacity(0.2))),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.settings_rounded, size: 16,
+                  color: const Color(0xFF10b981).withOpacity(0.8)),
+                const SizedBox(width: 8),
+                Text('알림 접근 허용', style: BotanicalTypo.body(
+                  size: 13, weight: FontWeight.w600,
+                  color: const Color(0xFF10b981))),
+              ]),
+            ),
+          )
+        else
+          Row(children: [
+            const SizedBox(width: 60),
+            Text('CHSTUDIO_OUT / CHSTUDIO_HOME 알림 감지 중',
+              style: BotanicalTypo.label(size: 11, color: _textMuted)),
+          ]),
+      ]),
+    );
+  }
+
+  // ═══ 공부 장소 관리 ═══
+
+  static const _uid = 'sJ8Pxusw9gR0tNR44RhkIge7OiG2';
+  DocumentReference get _iotRef =>
+      FirebaseFirestore.instance.doc('users/$_uid/data/iot');
+
+  Future<void> _loadStudyLocations() async {
+    try {
+      final doc = await _iotRef.get();
+      final data = doc.data() as Map<String, dynamic>? ?? {};
+      final list = data['studyLocations'] as List<dynamic>? ?? [];
+      _studyLocations = list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (_) {}
+  }
+
+  Future<void> _saveStudyLocations() async {
+    await _iotRef.set({'studyLocations': _studyLocations}, SetOptions(merge: true));
+  }
+
+  Future<void> _addStudyLocation() async {
+    final nameCtrl = TextEditingController();
+    final latCtrl = TextEditingController();
+    final lngCtrl = TextEditingController();
+    final radiusCtrl = TextEditingController(text: '200');
+    bool gpsLoading = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setBS) {
+          final bottom = MediaQuery.of(ctx).viewInsets.bottom +
+              MediaQuery.of(ctx).padding.bottom + 16;
+          return Container(
+            margin: EdgeInsets.only(bottom: bottom),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            decoration: BoxDecoration(
+              color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: _textMuted.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              Text('공부 장소 추가', style: BotanicalTypo.heading(
+                size: 16, color: _textMain)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameCtrl,
+                style: TextStyle(color: _textMain, fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: '장소 이름',
+                  labelStyle: TextStyle(color: _textMuted, fontSize: 12),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: _textMuted.withOpacity(0.3))),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: TextField(
+                  controller: latCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: TextStyle(color: _textMain, fontSize: 13, fontFamily: 'monospace'),
+                  decoration: InputDecoration(
+                    labelText: '위도',
+                    labelStyle: TextStyle(color: _textMuted, fontSize: 12),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: _textMuted.withOpacity(0.3))),
+                  ),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextField(
+                  controller: lngCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: TextStyle(color: _textMain, fontSize: 13, fontFamily: 'monospace'),
+                  decoration: InputDecoration(
+                    labelText: '경도',
+                    labelStyle: TextStyle(color: _textMuted, fontSize: 12),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: _textMuted.withOpacity(0.3))),
+                  ),
+                )),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () async {
+                    setBS(() => gpsLoading = true);
+                    try {
+                      final pos = await Geolocator.getCurrentPosition(
+                        desiredAccuracy: LocationAccuracy.high);
+                      latCtrl.text = pos.latitude.toStringAsFixed(6);
+                      lngCtrl.text = pos.longitude.toStringAsFixed(6);
+                    } catch (_) {}
+                    setBS(() => gpsLoading = false);
+                  },
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: _accent.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12)),
+                    child: gpsLoading
+                      ? const SizedBox(width: 18, height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : Icon(Icons.my_location_rounded, size: 20, color: _accent),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              TextField(
+                controller: radiusCtrl,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: _textMain, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: '반경 (m)',
+                  labelStyle: TextStyle(color: _textMuted, fontSize: 12),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: _textMuted.withOpacity(0.3))),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final name = nameCtrl.text.trim();
+                    final lat = double.tryParse(latCtrl.text.trim());
+                    final lng = double.tryParse(lngCtrl.text.trim());
+                    final radius = int.tryParse(radiusCtrl.text.trim()) ?? 200;
+                    if (name.isEmpty || lat == null || lng == null) return;
+                    Navigator.pop(ctx, {
+                      'name': name, 'lat': lat, 'lng': lng, 'radius': radius,
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
+                  child: Text('추가', style: TextStyle(
+                    color: _dk ? Colors.black : Colors.white,
+                    fontWeight: FontWeight.w700, fontSize: 14)),
+                ),
+              ),
+            ]),
+          );
+        });
+      },
+    ).then((result) async {
+      if (result == null) return;
+      final loc = result as Map<String, dynamic>;
+      _studyLocations.add(loc);
+      await _saveStudyLocations();
+      _safeSetState(() {});
+    });
+  }
+
+  Widget _studyLocationsCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BotanicalDeco.card(_dk),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6366f1).withOpacity(_dk ? 0.12 : 0.08),
+              borderRadius: BorderRadius.circular(14)),
+            child: const Icon(Icons.location_on_rounded, size: 24,
+              color: Color(0xFF6366f1)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('공부 장소', style: BotanicalTypo.body(
+              size: 15, weight: FontWeight.w700, color: _textMain)),
+            const SizedBox(height: 2),
+            Text('등록된 장소에서 외출 확정 시 자동 공부 처리',
+              style: BotanicalTypo.label(size: 11, color: _textMuted)),
+          ])),
+          GestureDetector(
+            onTap: _addStudyLocation,
+            child: Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFF6366f1).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.add_rounded, size: 18,
+                color: Color(0xFF6366f1)),
+            ),
+          ),
+        ]),
+        if (_studyLocations.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          ..._studyLocations.asMap().entries.map((e) {
+            final i = e.key;
+            final loc = e.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(children: [
+                const SizedBox(width: 60),
+                Icon(Icons.place_rounded, size: 14,
+                  color: const Color(0xFF6366f1).withOpacity(0.6)),
+                const SizedBox(width: 8),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(loc['name'] ?? '', style: BotanicalTypo.body(
+                      size: 13, weight: FontWeight.w600, color: _textSub)),
+                    Text('${(loc['lat'] as num?)?.toStringAsFixed(4)}, '
+                        '${(loc['lng'] as num?)?.toStringAsFixed(4)}  '
+                        '${loc['radius'] ?? 200}m',
+                      style: TextStyle(fontSize: 10, fontFamily: 'monospace',
+                        color: _textMuted)),
+                  ],
+                )),
+                GestureDetector(
+                  onTap: () async {
+                    _studyLocations.removeAt(i);
+                    await _saveStudyLocations();
+                    _safeSetState(() {});
+                  },
+                  child: Icon(Icons.close_rounded, size: 16,
+                    color: _textMuted.withOpacity(0.5)),
+                ),
+              ]),
+            );
+          }),
+        ] else ...[
+          const SizedBox(height: 10),
+          Row(children: [
+            const SizedBox(width: 60),
+            Text('등록된 장소 없음', style: BotanicalTypo.label(
+              size: 11, color: _textMuted)),
+          ]),
+        ],
       ]),
     );
   }

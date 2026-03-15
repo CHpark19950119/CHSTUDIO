@@ -1,13 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'theme/botanical_theme.dart';
 import 'screens/splash_screen.dart';
 import 'services/sleep_detect_service.dart';
+import 'services/fcm_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FirebaseMessaging.onBackgroundMessage(onFcmBackgroundMessage);
   await Hive.initFlutter();
   runApp(const CheonhongApp());
 }

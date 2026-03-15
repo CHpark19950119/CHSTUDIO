@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -99,10 +101,17 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
 
   Future<void> _load() async {
     try {
-      final html = await rootBundle
-          .loadString('assets/roadmap/허락_제1부_흙_v4.html');
-      final cover = _parseCover(html);
-      final chapters = _parseChapters(html);
+      // 전반(ch 1-5) + 후반(ch 6-11) 분리 로딩
+      final html1 =
+          await rootBundle.loadString('assets/허락_전반_01-05.html');
+      final html2 =
+          await rootBundle.loadString('assets/허락_후반_06-11.html');
+
+      final cover = _parseCover(html1);
+      final ch1 = _parseChapters(html1);
+      final ch2 = _parseChapters(html2);
+      final chapters = [...ch1, ...ch2];
+
       if (!mounted) return;
       _tabCtrl.dispose();
       _tabCtrl = TabController(length: chapters.length, vsync: this);
@@ -214,7 +223,13 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
       if (_startsWith(body, pos, '<div class="photo-illust"')) {
         final end = _findBalancedDiv(body, pos);
         if (end > pos) {
-          blocks.add(const _Block(_BT.photoSkip, ''));
+          final inner = body.substring(pos, end);
+          // base64 이미지 추출
+          final imgRe = RegExp(r'src="data:image/[^;]+;base64,([^"]+)"');
+          final imgMatch = imgRe.firstMatch(inner);
+          final b64 = imgMatch?.group(1) ?? '';
+          final caption = _cls(inner, 'photo-caption');
+          blocks.add(_Block(_BT.photoSkip, b64, extra: caption));
           pos = end;
           continue;
         }
@@ -782,7 +797,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
       case _BT.circuitFlow:
         return _circuitFlowW(b.text);
       case _BT.photoSkip:
-        return _photoSkipW();
+        return _photoSkipW(b.text, b.extra ?? '');
     }
   }
 
@@ -1028,27 +1043,66 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
     );
   }
 
-  // ─── 사진 스킵 ───
-  Widget _photoSkipW() {
+  // ─── 삽화 ───
+  Widget _photoSkipW(String b64, String caption) {
+    if (b64.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 28),
+        decoration: BoxDecoration(
+          color: _sf.withOpacity(0.5),
+          border: Border.all(color: _bd, width: 0.5),
+        ),
+        child: const Center(
+          child: Column(children: [
+            Icon(Icons.image_outlined, size: 28, color: _tx3),
+            SizedBox(height: 6),
+            Text('삽화',
+                style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 10,
+                    color: _tx3,
+                    letterSpacing: 2)),
+          ]),
+        ),
+      );
+    }
+
+    Uint8List? bytes;
+    try {
+      bytes = base64Decode(b64);
+    } catch (_) {
+      bytes = null;
+    }
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      padding: const EdgeInsets.symmetric(vertical: 28),
-      decoration: BoxDecoration(
-        color: _sf.withOpacity(0.5),
-        border: Border.all(color: _bd, width: 0.5),
-      ),
-      child: const Center(
-        child: Column(children: [
-          Icon(Icons.image_outlined, size: 28, color: _tx3),
-          SizedBox(height: 6),
-          Text('삽화',
-              style: TextStyle(
+      margin: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(children: [
+        if (bytes != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: Image.memory(bytes, width: double.infinity, fit: BoxFit.fitWidth),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 28),
+            color: _sf.withOpacity(0.5),
+            child: const Center(child: Icon(Icons.broken_image_outlined, size: 28, color: _tx3)),
+          ),
+        if (caption.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(caption,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 10,
                   color: _tx3,
-                  letterSpacing: 2)),
-        ]),
-      ),
+                  letterSpacing: 1.5,
+                  height: 1.6,
+                )),
+          ),
+      ]),
     );
   }
 

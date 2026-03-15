@@ -28,8 +28,8 @@ class SleepDetectService {
       } catch (e) {
         debugPrint('[SleepDetect] startMonitoring error: $e');
       }
+      await checkPendingSleep();
     }
-    await checkPendingSleep();
   }
 
   Future<void> setEnabled(bool value) async {
@@ -49,6 +49,7 @@ class SleepDetectService {
 
   /// 앱 재개 시 호출 — 네이티브에서 감지된 수면 이벤트 처리
   Future<void> checkPendingSleep() async {
+    if (!_enabled) return;
     try {
       final result = await _channel.invokeMethod<Map>('consumeSleepDetection');
       if (result == null) return;

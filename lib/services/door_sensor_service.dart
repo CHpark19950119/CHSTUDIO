@@ -105,8 +105,11 @@ class DoorSensorService extends ChangeNotifier {
   //  Firestore 리스너
   // ═══════════════════════════════════════════
 
+  bool _firstSnapshot = true;
+
   void _startListening() {
     _stopListening();
+    _firstSnapshot = true;
     _log('Firestore 리스너 시작: $_iotDocPath');
 
     _firestoreSub = FirebaseFirestore.instance
@@ -156,6 +159,15 @@ class DoorSensorService extends ChangeNotifier {
   // ═══════════════════════════════════════════
 
   void _processEvent(DoorEvent event) {
+    // 첫 스냅샷은 현재 상태 동기화만 (이벤트 발행 안 함)
+    if (_firstSnapshot) {
+      _firstSnapshot = false;
+      _lastDoorState = event.type;
+      _lastEventTime = event.timestamp;
+      _log('초기 상태 동기화: ${event.type.name}');
+      return;
+    }
+
     // 같은 상태 무시
     if (event.type == _lastDoorState && event.type != DoorState.unknown) {
       return;
@@ -193,35 +205,9 @@ class DoorSensorService extends ChangeNotifier {
   // ═══════════════════════════════════════════
 
   void _notifyByContext(DoorEvent event) {
-    final nfc = NfcService();
-    final dayState = nfc.state;
-    final timeStr = DateFormat('HH:mm').format(event.timestamp);
-
-    if (event.type == DoorState.open) {
-      // 문 열림 — 외출 가능성
-      switch (dayState) {
-        case DayState.awake:
-        case DayState.returned:
-        case DayState.studying:
-          _sendTelegram('🚪 현관문 열림 $timeStr (${dayState.name})');
-          _log('문 열림 알림 (state=${dayState.name})');
-          break;
-        case DayState.idle:
-        case DayState.outing:
-        case DayState.sleeping:
-          _log('문 열림 — 알림 생략 (state=${dayState.name})');
-          break;
-      }
-    } else if (event.type == DoorState.closed) {
-      // 문 닫힘
-      if (dayState == DayState.outing) {
-        // 외출 중 문 닫힘 → 귀가 가능성
-        _sendTelegram('🚪 현관문 닫힘 $timeStr — 귀가?');
-        _log('문 닫힘 알림 (외출 중 → 귀가 감지)');
-      } else {
-        _log('문 닫힘 — 알림 생략 (state=${dayState.name})');
-      }
-    }
+    // 방문 센서: 텔레그램 알림 비활성 (기상 감지는 SensorWakeDetector가 처리)
+    final dayState = NfcService().state;
+    _log('문 ${event.type.name} — 알림 생략 (state=${dayState.name})');
   }
 
   void _sendTelegram(String msg) {

@@ -48,20 +48,20 @@ class SensorWakeDetector implements WakeDetector {
   void _onDoorEvent(DoorEvent event) {
     if (event.type != DoorState.open) return;
 
-    final now = DateTime.now();
-    final ws = WakeService();
-    // 디버그 모드가 아니면 설정된 시간대만
-    if (!ws.debugMode) {
-      final nowMin = now.hour * 60 + now.minute;
-      if (nowMin < ws.wakeStartMin || nowMin >= ws.wakeEndMin) return;
-    }
+    // DayState가 idle일 때만
+    final nfcState = NfcService().state;
+    if (nfcState != DayState.idle) return;
 
-    // 하루 한 번만
+    // 7시 이전 무시 (새벽 화장실 등 오탐 방지)
+    final now = DateTime.now();
+    if (now.hour < 7) return;
+
+    // 하루 한 번만 (안전망)
     final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     if (_lastWakeDate == today) return;
     _lastWakeDate = today;
 
-    debugPrint('[SensorWake] wake triggered at ${now.hour}:${now.minute.toString().padLeft(2, '0')}');
+    debugPrint('[SensorWake] 문 열림 → 기상 (${now.hour}:${now.minute.toString().padLeft(2, '0')})');
     WakeService().recordWake();
   }
 }

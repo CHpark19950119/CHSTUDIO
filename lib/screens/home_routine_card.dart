@@ -47,10 +47,9 @@ extension _HomeRoutineCard on _HomeScreenState {
         Row(children: [
           ...items.map((i) => Expanded(child: _routineChip(i))),
           const SizedBox(width: 6),
-          // 설정 버튼
+          // 시간 수정 버튼
           GestureDetector(
-            onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => NfcScreen())).then((_) => _load()),
+            onTap: () => _editTimeField('wake', '기상', _wake),
             child: Icon(Icons.tune_rounded, size: 16, color: _textMuted.withOpacity(0.4))),
         ]),
         // ── 프로그레스 ──

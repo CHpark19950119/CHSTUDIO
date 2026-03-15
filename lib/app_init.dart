@@ -15,6 +15,7 @@ import 'services/sleep_detect_service.dart';
 import 'services/wake_service.dart';
 import 'services/location_request_service.dart';
 import 'services/widget_render_service.dart';
+import 'services/fcm_service.dart';
 
 class AppInit {
   static Future<void> run() async {
@@ -51,6 +52,7 @@ class AppInit {
     SleepDetectService().init().catchError((_) {});
     WakeService().init().catchError((_) {});
     LocationRequestService().init().catchError((_) {});
+    FcmService().init().catchError((_) {});
 
     // ── Phase 5: 주간 리포트 자동 체크 (일요일) ──
     ReportService().checkWeeklyReport().catchError((_) {});

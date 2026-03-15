@@ -9,6 +9,7 @@ import 'order_theme.dart';
 import 'order_goals_tab.dart';
 import 'order_expense_tab.dart';
 import 'order_life_tab.dart';
+import '../journey_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════
 /// COMPASS v5.0 — Command Center (Single Page)
@@ -581,7 +582,7 @@ class _OrderScreenState extends State<OrderScreen> {
       const SizedBox(height: 8),
       Row(children: [
         _accessBtn('인생경로', Icons.route_rounded, const Color(0xFFf472b6), () =>
-          _pushDetail(const OrderLifeTab())),
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const JourneyScreen()))),
         const SizedBox(width: 8),
         const Expanded(child: SizedBox()),
       ]),

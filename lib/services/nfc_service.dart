@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -39,7 +40,7 @@ class NfcAction {
 
 const _nfcChannel = MethodChannel('com.cheonhong.cheonhong_studio/nfc');
 
-class NfcService extends ChangeNotifier {
+class NfcService extends ChangeNotifier with WidgetsBindingObserver {
   static final NfcService _instance = NfcService._internal();
   factory NfcService() => _instance;
   NfcService._internal();
@@ -162,9 +163,35 @@ class NfcService extends ChangeNotifier {
     _geofenceSub?.cancel();
     _geofenceSub = GeofenceService().homeStream.listen(_onGeofenceEvent);
 
+    // ★ 백그라운드→포그라운드 전환 시 상태 재로딩
+    WidgetsBinding.instance.addObserver(this);
+
     _initialized = true;
     _log('초기화 완료 (state=${_state.name}, mealing=$_isMealing)');
     notifyListeners();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState == AppLifecycleState.resumed) {
+      _syncStateFromPrefs();
+    }
+  }
+
+  /// 백그라운드 FCM/Geofence가 SharedPreferences에 저장한 상태를 읽어 UI 반영
+  Future<void> _syncStateFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload(); // isolate 간 동기화
+    final savedDate = prefs.getString('nfc_state_date');
+    if (savedDate != _studyDate()) return;
+    final savedName = prefs.getString('nfc_state') ?? 'idle';
+    final saved = DayState.values.firstWhere(
+      (s) => s.name == savedName, orElse: () => DayState.idle);
+    if (saved != _state) {
+      _log('resume 동기화: $_state → $saved');
+      _state = saved;
+      notifyListeners();
+    }
   }
 
   void _onGeofenceEvent(bool entering) {
@@ -306,6 +333,11 @@ class NfcService extends ChangeNotifier {
       case NfcTagRole.meal: return _isMealing ? 'end' : 'start';
       default: return null;
     }
+  }
+
+  /// FCM/외부 트리거에서 호출 — dedup 적용, 이벤트 저장
+  Future<void> triggerRole(NfcTagRole role) async {
+    await _dispatch(role);
   }
 
   Future<String> manualTestRole(NfcTagRole role) async {
@@ -539,5 +571,10 @@ class NfcService extends ChangeNotifier {
   }
 
   @override
-  void dispose() { _cancelReminders(); _geofenceSub?.cancel(); super.dispose(); }
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cancelReminders();
+    _geofenceSub?.cancel();
+    super.dispose();
+  }
 }
