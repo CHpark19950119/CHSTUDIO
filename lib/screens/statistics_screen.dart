@@ -604,12 +604,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final targetMin = 480;
     final progress = (_todayMin / targetMin).clamp(0.0, 1.0);
 
-    // 등급
-    final todayGrade = DailyGrade.calculate(
-      date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      effectiveMinutes: _todayMin);
-    final gradeColor = _getGradeColor(todayGrade.grade);
-
     return AnimatedBuilder(
       animation: Listenable.merge([_countAnim, _glowCtrl]),
       builder: (_, __) {
@@ -660,19 +654,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             const SizedBox(width: 20),
             // ── 우측 통계 ──
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // 등급 뱃지
+              // 목표 달성률
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: gradeColor.withOpacity(0.12),
+                  color: BotanicalColors.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(GrowthMetaphor.gradeFlower(todayGrade.grade),
-                    style: const TextStyle(fontSize: 12)),
-                  const SizedBox(width: 4),
-                  Text('${todayGrade.grade} · ${todayGrade.totalScore.round()}점',
-                    style: BotanicalTypo.label(size: 11, weight: FontWeight.w800, color: gradeColor)),
-                ])),
+                child: Text('목표 ${(progress * 100).toInt()}%',
+                  style: BotanicalTypo.label(size: 11, weight: FontWeight.w800, color: BotanicalColors.primary))),
               const SizedBox(height: 14),
               // 주간 총합
               _heroStat('WEEKLY', '${(wH * _countAnim.value).round()}h ${(wM * _countAnim.value).round()}m',
@@ -1259,11 +1248,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final diffSign = diff >= 0 ? '+' : '';
     final diffStr = '${diffSign}${diff ~/ 60}h ${(diff.abs() % 60)}m';
 
-    // ★ 등급 계산
-    final todayGrade = DailyGrade.calculate(
-      date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
-      effectiveMinutes: _todayMin);
-    final gradeColor = _getGradeColor(todayGrade.grade);
+    final progress = (_todayMin / 480 * 100).toInt();
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1278,19 +1263,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           const SizedBox(width: 10),
           Text('학습 분석', style: BotanicalTypo.body(size: 14, weight: FontWeight.w700, color: _textMain)),
           const Spacer(),
-          // ★ 오늘 등급 뱃지
+          // ★ 목표 달성률 뱃지
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: gradeColor.withOpacity(0.12),
+              color: BotanicalColors.primary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(GrowthMetaphor.gradeFlower(todayGrade.grade),
-                style: const TextStyle(fontSize: 12)),
-              const SizedBox(width: 4),
-              Text('${todayGrade.grade} · ${todayGrade.totalScore.round()}점',
-                style: BotanicalTypo.label(size: 11, weight: FontWeight.w800, color: gradeColor)),
-            ])),
+            child: Text('목표 $progress%',
+              style: BotanicalTypo.label(size: 11, weight: FontWeight.w800, color: BotanicalColors.primary))),
         ]),
         const SizedBox(height: 16),
         // 지표 그리드
@@ -1321,16 +1301,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           ])),
       ]),
     );
-  }
-
-  Color _getGradeColor(String grade) {
-    switch (grade) {
-      case 'S': return const Color(0xFFEF4444);
-      case 'A': return const Color(0xFFF59E0B);
-      case 'B': return const Color(0xFF10B981);
-      case 'C': return const Color(0xFF3B82F6);
-      default: return const Color(0xFF64748B);
-    }
   }
 
   String _getStudyComment() {

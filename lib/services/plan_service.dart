@@ -404,12 +404,15 @@ class PlanService {
 
     final effectiveMin = sr?.effectiveMinutes ?? 0;
 
-    final grade = DailyGrade.calculate(
-      date: date,
-      wakeTime: tr?.wake,
-      studyStartTime: tr?.study,
-      effectiveMinutes: effectiveMin,
-    );
+    // Wake score: simple check if woke before 8:00
+    double wakeScore = 0;
+    if (tr?.wake != null) {
+      try {
+        final parts = tr!.wake!.split(':');
+        final h = int.parse(parts[0]);
+        wakeScore = h <= 7 ? 25.0 : (h <= 9 ? 15.0 : 5.0);
+      } catch (_) {}
+    }
 
     final taskComp = feedback?.execution?.completionRate ?? 0.0;
     final focusScore = DailyFeedback.focusQualityScore(
@@ -431,20 +434,20 @@ class PlanService {
 
     final growthScore = feedback?.calcGrowthScore(
           effectiveMin: effectiveMin,
-          wakeOnTime: grade.wakeScore >= 20,
+          wakeOnTime: wakeScore >= 20,
           bedOnTime: tr?.bedTime != null,
         ) ??
         ((effectiveMin / 480.0).clamp(0.0, 1.0) * 30 +
-            grade.wakeScore +
+            wakeScore +
             focusScore);
 
     return DailySnapshot(
       studyMin: effectiveMin,
-      grade: grade.grade,
-      gradeScore: grade.totalScore,
+      grade: '',
+      gradeScore: 0,
       taskCompletion: taskComp,
       habitCompletion: 0,
-      wakeScore: grade.wakeScore,
+      wakeScore: wakeScore,
       focusScore: focusScore,
       consistencyScore: consistencyScore,
       growthScore: growthScore,

@@ -45,14 +45,20 @@ class AppInit {
       FocusService().restoreState().timeout(const Duration(seconds: 8)).catchError((_) {}),
     ]);
 
-    // ── Phase 4: 거치대 + 지오펜스 + 도어센서 + 수면감지 + 기상감지 ──
-    CradleService().init().catchError((_) {});
-    GeofenceService().init().catchError((_) {});
-    DoorSensorService().init().catchError((_) {});
-    SleepDetectService().init().catchError((_) {});
-    WakeService().init().catchError((_) {});
-    LocationRequestService().init().catchError((_) {});
-    FcmService().init().catchError((_) {});
+    // ── Phase 4a: 센서 기반 서비스 (순서 의존: Door → Wake, Geo → NFC) ──
+    await Future.wait([
+      DoorSensorService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
+      GeofenceService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
+      CradleService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
+    ]);
+
+    // ── Phase 4b: Door/Geo 의존 서비스 ──
+    await Future.wait([
+      WakeService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
+      SleepDetectService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
+      FcmService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
+      LocationRequestService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
+    ]);
 
     // ── Phase 5: 주간 리포트 자동 체크 (일요일) ──
     ReportService().checkWeeklyReport().catchError((_) {});

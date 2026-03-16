@@ -16,23 +16,19 @@ extension _HomeRoutineCard on _HomeScreenState {
     final items = <_RItem>[
       _RItem('☀️', '기상', hasWake, _wake, BotanicalColors.gold,
         live: false,
-        onTap: hasWake ? () => _editTimeField('wake', '기상', _wake) : () => _quickWake()),
+        onTap: () => _editTimeField('wake', '기상', _wake)),
       _RItem('📖', '공부', hasStudy, _studyStart, BotanicalColors.primary,
         live: _ft.isRunning || (hasStudy && _studyEnd == null),
         sub: _studyEnd,
-        onTap: () => _quickStudy(),
-        onLong: hasStudy ? () => _editTimeField('study', '공부', _studyStart) : null),
+        onTap: () => _editTimeField('study', '공부', _studyStart)),
       _RItem(isOut ? '🚶' : '🏠', '외출', isOut || hasReturn,
         isOut ? _outing : _returnHome, const Color(0xFF3B8A6B),
-        live: isOut, onTap: () => _toggleOuting(),
-        onLong: () => _editTimeField('outing', '외출', _outing)),
+        live: isOut,
+        onTap: () => _editTimeField('outing', '외출', _outing)),
       _RItem('🍽️', '식사', hasMeal, null, const Color(0xFFFF8A65),
-        onTap: () => _quickMeal(),
-        onLong: () => _editTimeField('meal', '식사', null)),
+        onTap: () => _editTimeField('meal', '식사', null)),
       _RItem('🌙', '취침', hasBed, _bedTime, const Color(0xFF6B5DAF),
-        onTap: hasBed
-          ? () => _editTimeField('bedTime', '취침', _bedTime)
-          : () => _quickSleep()),
+        onTap: () => _editTimeField('bedTime', '취침', _bedTime)),
     ];
     final done = items.where((i) => i.active).length;
 
@@ -166,11 +162,6 @@ extension _HomeRoutineCard on _HomeScreenState {
               const SizedBox(width: 10),
               Text('순공 ${_effMin ~/ 60}h ${_effMin % 60}m',
                 style: BotanicalTypo.label(size: 14, weight: FontWeight.w800, color: BotanicalColors.primary)),
-              const Spacer(),
-              if (_grade != null)
-                Text('${_grade!.grade} ${_grade!.totalScore.toStringAsFixed(0)}점',
-                  style: BotanicalTypo.label(size: 13, weight: FontWeight.w700,
-                    color: BotanicalColors.gradeColor(_grade!.grade))),
             ]),
           ),
         ]),
@@ -261,17 +252,10 @@ extension _HomeRoutineCard on _HomeScreenState {
       if (updated.meals != null) _todayMeals = updated.meals!;
     });
 
-    final roleMap = {'wake': 'wake', 'outing': 'outing', 'study': 'study'};
-    final timeMap = {'wake': updated.wake, 'outing': updated.outing, 'study': updated.study};
-    final tgRole = roleMap[field];
-    final tgTime = timeMap[field];
-    if (tgRole != null && tgTime != null && mounted) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('$tgTime 저장됨'),
-        action: SnackBarAction(
-          label: '📩 다영에게 알리기',
-          onPressed: () => TelegramService().sendNfc('$tgRole $tgTime')),
-        duration: const Duration(seconds: 4),
+        content: Text('저장됨'),
+        duration: const Duration(seconds: 2),
       ));
     }
   }

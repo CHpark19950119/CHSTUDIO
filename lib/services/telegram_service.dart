@@ -37,7 +37,7 @@ class TelegramService {
         Uri.parse('https://api.telegram.org/bot$token/sendMessage'),
         headers: {'Content-Type': 'application/json; charset=utf-8'},
         body: jsonEncode({'chat_id': chatId, 'text': text}),
-      );
+      ).timeout(const Duration(seconds: 10));
       debugPrint('[Telegram] sent: $text');
     } catch (e) {
       debugPrint('[Telegram] send failed: $e');

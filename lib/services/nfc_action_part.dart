@@ -47,11 +47,9 @@ extension _NfcActionHandlers on NfcService {
 
       final tgTime = DateFormat('HH:mm').format(DateTime.now());
       if (!auto) {
-        _sendNfc('⏰ 기상 $tgTime');
         _notifyNative(title: '기상 인증', body: '기상 $tgTime');
         _emitAction('wake', '🚿', '기상 $tgTime');
       } else {
-        _sendNfc('⏰ 자동 기상 $tgTime');
         _emitAction('wake_auto', '🚿', '자동 기상');
       }
       _triggerWidgetUpdate();
@@ -132,7 +130,6 @@ extension _NfcActionHandlers on NfcService {
         _state = DayState.studying;
         await _saveState();
         _startMealReminder();
-        _sendNfc('📚 공부 재개 $tgTime ($dur)');
         _notifyNative(title: '공부 재개', body: '귀가 → 공부 ($dur)');
         _emitAction('study_resume', '📚', '공부 재개 ($dur)');
         _triggerWidgetUpdate();
@@ -159,7 +156,6 @@ extension _NfcActionHandlers on NfcService {
         _state = DayState.returned;
         await _saveState();
         _cancelReminders();
-        _sendNfc('📚 공부 종료 $tgTime$dur');
         _notifyNative(title: '공부 종료', body: '공부 종료 $tgTime$dur');
         _emitAction('study_end', '📚', '공부종료 $tgTime$dur');
         return;
@@ -174,7 +170,6 @@ extension _NfcActionHandlers on NfcService {
       _state = DayState.studying;
       await _saveState();
       _startMealReminder();
-      _sendNfc('📚 공부 시작 $tgTime$placeMsg');
       _notifyNative(title: '공부 시작', body: '공부 시작 $tgTime$placeMsg');
       _emitAction('study_start', '📚', '공부시작 $tgTime$placeMsg');
       _triggerWidgetUpdate();
@@ -206,7 +201,6 @@ extension _NfcActionHandlers on NfcService {
           if (pos != null) loc = ' (${LocationService.formatPosition(pos)})';
         } catch (_) {}
         await _saveState();
-        _sendNfc('🍽 식사 시작 $tgTime$loc');
         _notifyNative(title: '식사 시작', body: '식사 시작 $tgTime (${meals.length}번째)');
         _emitAction('meal_start', '🍽️', '식사 시작 $tgTime');
       } else {
@@ -219,7 +213,6 @@ extension _NfcActionHandlers on NfcService {
         final dur = openIdx >= 0 ? meals[openIdx].durationFormatted : null;
         final durMsg = dur != null ? ' ($dur)' : '';
         await _saveState();
-        _sendNfc('🍽 식사 종료 $tgTime$durMsg');
         _notifyNative(title: '식사 종료', body: '식사 종료 $tgTime$durMsg');
         _emitAction('meal_end', '🍽️', '식사 종료 $tgTime$durMsg');
       }
@@ -273,7 +266,6 @@ extension _NfcActionHandlers on NfcService {
 
       final tgTime = DateFormat('HH:mm').format(now);
       final summary = _buildSummary(e, studyEnd ?? e?.studyEnd, timeStr, meals);
-      _sendNfc('😴 취침 $tgTime\n$summary');
       _notifyNative(title: '취침', body: '취침 $tgTime — 좋은 밤 되세요');
       _emitAction('sleep', '🛏️', '취침 $tgTime');
       _triggerWidgetUpdate();

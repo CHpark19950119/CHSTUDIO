@@ -66,7 +66,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _mealStart, _mealEnd;
   int? _outingMinutes;
   int _effMin = 0;
-  DailyGrade? _grade;
   WeatherData? _weatherData;
   bool _noOuting = false; // ★ v10: 외출 안하는 날
   int _tab = 0;
@@ -183,6 +182,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _onNfcChanged() {
     if (!mounted) return;
+    // ★ NfcService movement times → UI 즉시 반영 (CF 비동기 대기 불필요)
+    if (_nfc.isOut && _nfc.outingTime != null) {
+      _outing = _nfc.outingTime;
+      _returnHome = null;
+    } else if (_nfc.state == DayState.returned && _nfc.returnTime != null) {
+      _returnHome = _nfc.returnTime;
+    }
     _safeSetState(() {});
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted && !_isLoading) _load();
@@ -246,9 +252,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           if (effMin != null) _effMin = effMin;
           if (orderData != null && !isProtected) _orderData = orderData;
           if (todayTodos != null && !isProtected) _todayTodos = todayTodos;
-          _grade = DailyGrade.calculate(
-            date: d, wakeTime: _wake,
-            studyStartTime: _studyStart, effectiveMinutes: _effMin);
         });
       });
     }, onError: (e) {
@@ -338,34 +341,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final localToday = lc.getGeneric('today');
     if (localToday != null) {
       _parseTodayData(localToday, d);
-      _safeSetState(() {});
       debugPrint('[Home] today 캐시 즉시 표시 OK');
     } else {
       // fallback: 기존 study 캐시
       final localData = lc.getStudyData();
       if (localData != null) {
         _parseStudyData(localData, d);
-        _safeSetState(() {});
         debugPrint('[Home] study 캐시 fallback 표시');
       }
     }
+    _preserveNfcMovementTimes();
+    _safeSetState(() {});
 
     // ═══ 2단계: Firebase today 문서 갱신 (1~2KB만 읽기) ═══
     _tryRefresh('today', () async {
       final data = await fb.getTodayDoc();
       if (data != null) {
         _parseTodayData(data, d);
-        _safeSetState(() {});
-        debugPrint('[Home] today 문서 갱신 OK');
       } else {
         // today 문서가 아직 없으면 study 문서 fallback
         final studyData = await fb.getStudyData();
         if (studyData != null) {
           _parseStudyData(studyData, d);
-          _safeSetState(() {});
-          debugPrint('[Home] study 문서 fallback OK');
         }
       }
+      // ★ NfcService movement times 보존 (Firestore에 없어도 iot 기반 즉시 반영)
+      _preserveNfcMovementTimes();
+      _safeSetState(() {});
     });
 
     // ═══ 3단계: 외부 서비스 (각각 독립, 실패 무관) ═══
@@ -404,10 +406,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _effMin = StudyTimeRecord.fromMap(d, strRaw[d] as Map<String, dynamic>).effectiveMinutes;
       }
     } catch (e) { debugPrint('[Home] studyTimeRecords: $e'); }
-
-    _grade = DailyGrade.calculate(
-      date: d, wakeTime: _wake,
-      studyStartTime: _studyStart, effectiveMinutes: _effMin);
 
     // orderData
     try {
@@ -496,10 +494,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       } catch (_) {}
     }
 
-    _grade = DailyGrade.calculate(
-      date: d, wakeTime: _wake,
-      studyStartTime: _studyStart, effectiveMinutes: _effMin);
-
     // orderData
     try {
       final od = data['orderData'];
@@ -544,6 +538,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         debugPrint('[Home] refresh $name: FAIL — $e');
       }
     });
+  }
+
+  /// NfcService movement 시간이 Firestore보다 최신이면 보존
+  void _preserveNfcMovementTimes() {
+    if (_outing == null && _nfc.outingTime != null &&
+        (_nfc.isOut || _nfc.state == DayState.returned)) {
+      _outing = _nfc.outingTime;
+    }
+    if (_returnHome == null && _nfc.returnTime != null &&
+        _nfc.state == DayState.returned) {
+      _returnHome = _nfc.returnTime;
+    }
   }
 
   /// 학습일 계산: 새벽 0~4시는 전날로 취급
@@ -748,11 +754,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // ═══ STATUS — 지금 상태 ═══
           _staggered(1, _nfcStatusCard()),
           const SizedBox(height: 10),
-          _staggered(1, IntrinsicHeight(child: Row(children: [
-            Expanded(child: _studyTimeCard()),
-            const SizedBox(width: 10),
-            Expanded(child: _gradeCard()),
-          ]))),
+          _staggered(1, _studyTimeCard()),
           const SizedBox(height: 10),
           _staggered(2, _libraryCard()),
           if (_ft.isRunning) ...[
@@ -1124,9 +1126,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _weatherGradeRow() {
     final w = _weatherData;
-    final g = _grade ?? DailyGrade.calculate(date: _studyDate());
-    final gc = BotanicalColors.gradeColor(g.grade);
-    final flower = GrowthMetaphor.gradeFlower(g.grade);
+    final h = _effMin ~/ 60;
+    final m = _effMin % 60;
+    final pc = _dk ? BotanicalColors.primaryLight : BotanicalColors.primary;
 
     return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── 날씨 디테일 카드 (LEFT) — 체감온도 + 옷차림 팁 ──
@@ -1159,90 +1161,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ]),
       )),
       const SizedBox(width: 10),
-      // ── 성적 카드 (RIGHT) ──
+      // ── 순공시간 카드 (RIGHT) ──
       Expanded(child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft, end: Alignment.bottomRight,
             colors: _dk
-              ? [gc.withOpacity(0.15), gc.withOpacity(0.08)]
-              : [gc.withOpacity(0.07), gc.withOpacity(0.03)]),
+              ? [const Color(0xFF1E3A2F), const Color(0xFF1A2E26)]
+              : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: gc.withOpacity(_dk ? 0.3 : 0.15)),
+          border: Border.all(color: pc.withOpacity(_dk ? 0.3 : 0.15)),
           boxShadow: [BoxShadow(
-            color: gc.withOpacity(_dk ? 0.12 : 0.06),
+            color: pc.withOpacity(_dk ? 0.12 : 0.06),
             blurRadius: 16, offset: const Offset(0, 4))]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Row(children: [
-            Text(flower, style: const TextStyle(fontSize: 14)),
+            Icon(Icons.timer_outlined, size: 14, color: pc),
             const SizedBox(width: 6),
-            Text('TODAY', style: BotanicalTypo.label(
-              size: 10, weight: FontWeight.w700, letterSpacing: 1, color: gc)),
+            Text('순공시간', style: BotanicalTypo.label(
+              size: 10, weight: FontWeight.w700, letterSpacing: 1, color: pc)),
           ]),
           const SizedBox(height: 6),
           Row(crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic, children: [
-            Text(g.grade, style: BotanicalTypo.heading(size: 22, weight: FontWeight.w900, color: gc)),
-            const SizedBox(width: 6),
-            Text(g.totalScore.toStringAsFixed(1), style: BotanicalTypo.number(
-              size: 13, weight: FontWeight.w300,
-              color: _dk ? Colors.white54 : _textMuted)),
+            Text('${h}h ${m}m', style: BotanicalTypo.heading(size: 22, weight: FontWeight.w900, color: pc)),
           ]),
           const SizedBox(height: 6),
           ClipRRect(borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
-              value: (g.totalScore / 100).clamp(0.0, 1.0),
-              backgroundColor: _dk ? Colors.white.withOpacity(0.08) : gc.withOpacity(0.1),
-              valueColor: AlwaysStoppedAnimation(gc),
+              value: (_effMin / 480).clamp(0.0, 1.0),
+              backgroundColor: _dk ? Colors.white.withOpacity(0.08) : pc.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation(pc),
               minHeight: 3)),
         ]),
       )),
     ]));
   }
 
-  // ── 성적 카드 (컴팩트) ──
-  Widget _gradeCard() {
-    final g = _grade ?? DailyGrade.calculate(date: _studyDate());
-    final gc = BotanicalColors.gradeColor(g.grade);
-    final flower = GrowthMetaphor.gradeFlower(g.grade);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [gc.withOpacity(0.07), gc.withOpacity(0.03)]),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: gc.withOpacity(0.15))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Text(flower, style: const TextStyle(fontSize: 14)),
-          const SizedBox(width: 6),
-          Text('TODAY', style: BotanicalTypo.label(
-            size: 10, weight: FontWeight.w700, letterSpacing: 1, color: gc)),
-        ]),
-        const SizedBox(height: 8),
-        Row(crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic, children: [
-          Text(g.grade, style: BotanicalTypo.heading(
-            size: 28, weight: FontWeight.w900, color: gc)),
-          const SizedBox(width: 6),
-          Text(g.totalScore.toStringAsFixed(1), style: BotanicalTypo.number(
-            size: 13, weight: FontWeight.w300, color: _textMuted)),
-        ]),
-        const SizedBox(height: 6),
-        ClipRRect(borderRadius: BorderRadius.circular(3),
-          child: LinearProgressIndicator(
-            value: (g.totalScore / 100).clamp(0.0, 1.0),
-            backgroundColor: gc.withOpacity(0.1),
-            valueColor: AlwaysStoppedAnimation(gc), minHeight: 3)),
-        const SizedBox(height: 3),
-        Text('${(g.totalScore).toStringAsFixed(0)}점', style: BotanicalTypo.label(
-          size: 9, color: _textMuted)),
-      ]),
-    );
-  }
+  // ── (gradeCard 제거됨 — _studyTimeCard 사용) ──
 
   // ── 순공시간 카드 (full width) ──
 
@@ -1298,122 +1256,61 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ══════════════════════════════════════════
 
   Widget _heroStatsRow() {
-    final g = _grade ?? DailyGrade.calculate(
-      date: _studyDate());
-    final gc = BotanicalColors.gradeColor(g.grade);
-    final flower = GrowthMetaphor.gradeFlower(g.grade);
     final h = _effMin ~/ 60;
     final m = _effMin % 60;
+    final pc = _dk ? BotanicalColors.primaryLight : BotanicalColors.primary;
 
-    return IntrinsicHeight(
-      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Expanded(child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: _dk
-                ? [const Color(0xFF1E3A2F), const Color(0xFF1A2E26)]
-                : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: BotanicalColors.primary.withOpacity(_dk ? 0.3 : 0.15)),
-            boxShadow: [BoxShadow(
-              color: BotanicalColors.primary.withOpacity(_dk ? 0.15 : 0.08),
-              blurRadius: 20, offset: const Offset(0, 6))]),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: BotanicalColors.primary.withOpacity(_dk ? 0.2 : 0.1),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Icon(Icons.timer_outlined, size: 14,
-                  color: _dk ? BotanicalColors.primaryLight : BotanicalColors.primary)),
-              const SizedBox(width: 8),
-              Text('순공시간', style: BotanicalTypo.label(
-                size: 11, weight: FontWeight.w700,
-                color: _dk ? BotanicalColors.primaryLight : BotanicalColors.primary)),
-            ]),
-            const SizedBox(height: 10),
-            Row(crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic, children: [
-              Text('$h', style: BotanicalTypo.number(size: 38, weight: FontWeight.w300,
-                color: _dk ? Colors.white : BotanicalColors.textMain)),
-              Text('h ', style: BotanicalTypo.label(size: 15, weight: FontWeight.w300,
-                color: _dk ? Colors.white54 : BotanicalColors.textSub)),
-              Text('${m.toString().padLeft(2, '0')}', style: BotanicalTypo.number(
-                size: 26, weight: FontWeight.w300,
-                color: _dk ? Colors.white70 : BotanicalColors.textSub)),
-              Text('m', style: BotanicalTypo.label(size: 13, weight: FontWeight.w300,
-                color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
-            ]),
-            const SizedBox(height: 8),
-            ClipRRect(borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: (_effMin / 480).clamp(0.0, 1.0),
-                backgroundColor: _dk
-                  ? Colors.white.withOpacity(0.08)
-                  : BotanicalColors.primary.withOpacity(0.1),
-                valueColor: AlwaysStoppedAnimation(
-                  _dk ? BotanicalColors.primaryLight : BotanicalColors.primary),
-                minHeight: 4)),
-            const SizedBox(height: 3),
-            Text('목표 8h · ${(_effMin / 480 * 100).toInt()}%',
-              style: BotanicalTypo.label(size: 10,
-                color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
-          ]),
-        )),
-        const SizedBox(width: 10),
-        Expanded(child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft, end: Alignment.bottomRight,
-              colors: _dk
-                ? [gc.withOpacity(0.15), gc.withOpacity(0.08)]
-                : [gc.withOpacity(0.06), gc.withOpacity(0.03)]),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: gc.withOpacity(_dk ? 0.3 : 0.15)),
-            boxShadow: [BoxShadow(
-              color: gc.withOpacity(_dk ? 0.12 : 0.08),
-              blurRadius: 20, offset: const Offset(0, 6))]),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Row(children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: gc.withOpacity(_dk ? 0.2 : 0.1),
-                  borderRadius: BorderRadius.circular(8)),
-                child: Text(flower, style: const TextStyle(fontSize: 12))),
-              const SizedBox(width: 8),
-              Text('TODAY', style: BotanicalTypo.label(
-                size: 11, weight: FontWeight.w700, letterSpacing: 1.5, color: gc)),
-            ]),
-            const SizedBox(height: 10),
-            Row(crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic, children: [
-              Text(g.grade, style: BotanicalTypo.heading(size: 34, weight: FontWeight.w900,
-                color: gc)),
-              const SizedBox(width: 8),
-              Text(g.totalScore.toStringAsFixed(1),
-                style: BotanicalTypo.number(size: 22, weight: FontWeight.w300,
-                  color: _dk ? Colors.white54 : BotanicalColors.textMuted)),
-            ]),
-            const SizedBox(height: 8),
-            ClipRRect(borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: (g.totalScore / 100).clamp(0.0, 1.0),
-                backgroundColor: _dk ? Colors.white.withOpacity(0.08) : gc.withOpacity(0.1),
-                valueColor: AlwaysStoppedAnimation(gc),
-                minHeight: 4)),
-            const SizedBox(height: 3),
-            Text('${g.totalScore.toStringAsFixed(0)} / 100',
-              style: BotanicalTypo.label(size: 10,
-                color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
-          ]),
-        )),
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: _dk
+            ? [const Color(0xFF1E3A2F), const Color(0xFF1A2E26)]
+            : [const Color(0xFFE8F5E9), const Color(0xFFF1F8E9)]),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: BotanicalColors.primary.withOpacity(_dk ? 0.3 : 0.15)),
+        boxShadow: [BoxShadow(
+          color: BotanicalColors.primary.withOpacity(_dk ? 0.15 : 0.08),
+          blurRadius: 20, offset: const Offset(0, 6))]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: BotanicalColors.primary.withOpacity(_dk ? 0.2 : 0.1),
+              borderRadius: BorderRadius.circular(8)),
+            child: Icon(Icons.timer_outlined, size: 14, color: pc)),
+          const SizedBox(width: 8),
+          Text('순공시간', style: BotanicalTypo.label(
+            size: 11, weight: FontWeight.w700, color: pc)),
+        ]),
+        const SizedBox(height: 10),
+        Row(crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic, children: [
+          Text('$h', style: BotanicalTypo.number(size: 38, weight: FontWeight.w300,
+            color: _dk ? Colors.white : BotanicalColors.textMain)),
+          Text('h ', style: BotanicalTypo.label(size: 15, weight: FontWeight.w300,
+            color: _dk ? Colors.white54 : BotanicalColors.textSub)),
+          Text('${m.toString().padLeft(2, '0')}', style: BotanicalTypo.number(
+            size: 26, weight: FontWeight.w300,
+            color: _dk ? Colors.white70 : BotanicalColors.textSub)),
+          Text('m', style: BotanicalTypo.label(size: 13, weight: FontWeight.w300,
+            color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
+        ]),
+        const SizedBox(height: 8),
+        ClipRRect(borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: (_effMin / 480).clamp(0.0, 1.0),
+            backgroundColor: _dk
+              ? Colors.white.withOpacity(0.08)
+              : BotanicalColors.primary.withOpacity(0.1),
+            valueColor: AlwaysStoppedAnimation(pc),
+            minHeight: 4)),
+        const SizedBox(height: 3),
+        Text('목표 8h · ${(_effMin / 480 * 100).toInt()}%',
+          style: BotanicalTypo.label(size: 10,
+            color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
       ]),
     );
   }
@@ -1423,27 +1320,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ══════════════════════════════════════════
 
   Widget _scoreBreakdown() {
-    final g = _grade ?? DailyGrade.calculate(
-      date: _studyDate());
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       decoration: BotanicalDeco.card(_dk),
       child: Row(children: [
-        _scoreCell('기상', _fmt12h(_wake), g.wakeScore, 25,
+        _infoCell('기상', _fmt12h(_wake),
           BotanicalColors.gold, Icons.wb_sunny_outlined),
-        _scoreDivider(),
-        _scoreCell('공부시작', _fmt12h(_studyStart), g.studyStartScore, 25,
+        _infoDivider(),
+        _infoCell('공부시작', _fmt12h(_studyStart),
           BotanicalColors.subjectData, Icons.menu_book_outlined),
-        _scoreDivider(),
-        _scoreCell('순공', '${_effMin ~/ 60}h${_effMin % 60}m', g.studyTimeScore, 50,
+        _infoDivider(),
+        _infoCell('순공', '${_effMin ~/ 60}h${_effMin % 60}m',
           BotanicalColors.primary, Icons.schedule_outlined),
       ]),
     );
   }
 
-  Widget _scoreCell(String label, String value, double score, double max,
+  Widget _infoCell(String label, String value,
       Color color, IconData icon) {
-    final pct = (score / max).clamp(0.0, 1.0);
     return Expanded(child: Column(children: [
       Icon(icon, size: 16, color: color.withOpacity(0.7)),
       const SizedBox(height: 6),
@@ -1451,21 +1345,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         size: 13, weight: FontWeight.w700, color: _textMain)),
       const SizedBox(height: 2),
       Text(label, style: BotanicalTypo.label(size: 10, color: _textMuted)),
-      const SizedBox(height: 8),
-      SizedBox(width: 34, height: 34,
-        child: Stack(alignment: Alignment.center, children: [
-          CircularProgressIndicator(
-            value: pct, strokeWidth: 2.5,
-            backgroundColor: _dk ? Colors.white.withOpacity(0.06) : color.withOpacity(0.1),
-            valueColor: AlwaysStoppedAnimation(color)),
-          Text(score.toStringAsFixed(0), style: BotanicalTypo.label(
-            size: 10, weight: FontWeight.w800, color: color)),
-        ])),
     ]));
   }
 
-  Widget _scoreDivider() => Container(
-    width: 1, height: 65, color: _border.withOpacity(0.4));
+  Widget _infoDivider() => Container(
+    width: 1, height: 45, color: _border.withOpacity(0.4));
 
   // ══════════════════════════════════════════
   //  포커스 활성 배너

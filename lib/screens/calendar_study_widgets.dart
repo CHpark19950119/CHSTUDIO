@@ -26,7 +26,7 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
     final sr = _selectedStudyRecord!;
     final effH = sr.effectiveMinutes ~/ 60;
     final effM = sr.effectiveMinutes % 60;
-    final grade = _selectedGrade;
+    final pct = (sr.effectiveMinutes / 480 * 100).toInt();
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -44,19 +44,8 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
             fontSize: 22, fontWeight: FontWeight.w800, color: _textMain)),
         ]),
         const Spacer(),
-        if (grade != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: BotanicalColors.gradeColor(grade.grade).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12)),
-            child: Column(children: [
-              Text(grade.grade, style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w800,
-                color: BotanicalColors.gradeColor(grade.grade))),
-              Text(GrowthMetaphor.gradeFlower(grade.grade),
-                style: const TextStyle(fontSize: 12)),
-            ])),
+        Text('$pct%', style: TextStyle(
+          fontSize: 16, fontWeight: FontWeight.w700, color: _textMuted)),
       ]),
     );
   }
@@ -150,10 +139,6 @@ extension _CalendarStudyWidgets on _CalendarScreenState {
       final records = await _fb.getTimeRecords();
       _safeSetState(() {
         _selectedTimeRecord = records[ds];
-        _selectedGrade = DailyGrade.calculate(
-          date: ds, wakeTime: _selectedTimeRecord?.wake,
-          studyStartTime: _selectedTimeRecord?.study,
-          effectiveMinutes: _selectedStudyRecord?.effectiveMinutes ?? 0);
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

@@ -443,6 +443,8 @@ class TodoItem {
   final int? estimatedMinutes;  // 예상 시간 (분)
   final String? priority;       // high/medium/low
   final String? type;           // study/review/mock/task/errand
+  final String? goalId;         // ProgressGoal 연결 (진행도 자동 반영)
+  final int? goalUnits;         // 완료 시 진행할 단위 수 (기본 1)
 
   static const subjects = ['언어', '자료', '상황', '경제', '7급전공'];
   static const priorities = ['high', 'medium', 'low'];
@@ -468,6 +470,8 @@ class TodoItem {
     this.estimatedMinutes,
     this.priority,
     this.type,
+    this.goalId,
+    this.goalUnits,
   });
 
   /// [clearSubject], [clearPriority] 등을 true로 전달하면 해당 필드를 null로 설정
@@ -484,6 +488,10 @@ class TodoItem {
     bool clearPriority = false,
     String? type,
     bool clearType = false,
+    String? goalId,
+    bool clearGoalId = false,
+    int? goalUnits,
+    bool clearGoalUnits = false,
   }) =>
       TodoItem(
         id: id,
@@ -495,6 +503,8 @@ class TodoItem {
         estimatedMinutes: clearEstimatedMinutes ? null : (estimatedMinutes ?? this.estimatedMinutes),
         priority: clearPriority ? null : (priority ?? this.priority),
         type: clearType ? null : (type ?? this.type),
+        goalId: clearGoalId ? null : (goalId ?? this.goalId),
+        goalUnits: clearGoalUnits ? null : (goalUnits ?? this.goalUnits),
       );
 
   factory TodoItem.fromMap(Map<String, dynamic> m) => TodoItem(
@@ -507,6 +517,8 @@ class TodoItem {
         estimatedMinutes: (m['estimatedMinutes'] as num?)?.toInt(),
         priority: m['priority'] as String?,
         type: m['type'] as String?,
+        goalId: m['goalId'] as String?,
+        goalUnits: (m['goalUnits'] as num?)?.toInt(),
       );
 
   Map<String, dynamic> toMap() => {
@@ -519,6 +531,8 @@ class TodoItem {
         if (estimatedMinutes != null) 'estimatedMinutes': estimatedMinutes,
         if (priority != null) 'priority': priority,
         if (type != null) 'type': type,
+        if (goalId != null) 'goalId': goalId,
+        if (goalUnits != null) 'goalUnits': goalUnits,
       };
 }
 

@@ -185,29 +185,17 @@ class _GeofenceHandler extends TaskHandler {
 
   Future<void> _onExit(Position pos) async {
     final t = _timeStr();
-    final d = _todayKey();
     try {
-      final ref = FirebaseFirestore.instance.doc('users/$_uid/data/today');
-      try {
-        await ref.update({
-          'timeRecords.$d.outing': t,
-          'timeRecords.$d.returnHome': FieldValue.delete(),
-        });
-      } catch (_) {
-        await ref.set({'timeRecords': {d: {'outing': t}}}, SetOptions(merge: true));
-      }
-      // Dual-write study doc
-      await FirebaseFirestore.instance.doc('users/$_uid/data/study').set({
-        'timeRecords': {d: {'outing': t}}
-      }, SetOptions(merge: true));
-
-      // DayState
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('nfc_state', 'outing');
-      await prefs.setString('nfc_state_date', d);
-
-      // GPS for Hedwig
+      // data/iot에만 기록 — CF onIotWrite가 timeRecords + 텔레그램 처리
       await FirebaseFirestore.instance.doc('users/$_uid/data/iot').set({
+        'movement': {
+          'pending': false,
+          'type': 'out',
+          'leftAt': FieldValue.serverTimestamp(),
+          'leftAtLocal': t,
+          'source': 'geofence_fg',
+          'confirmedAt': FieldValue.serverTimestamp(),
+        },
         'lastLocation': {
           'latitude': pos.latitude,
           'longitude': pos.longitude,
@@ -215,8 +203,10 @@ class _GeofenceHandler extends TaskHandler {
         }
       }, SetOptions(merge: true));
 
-      final loc = '${pos.latitude.toStringAsFixed(4)},${pos.longitude.toStringAsFixed(4)}';
-      await _sendBoth('🚶 외출 $t ($loc)');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('nfc_state', 'outing');
+      await prefs.setString('nfc_state_date', _todayKey());
+      debugPrint('[GeoTask] exit event → iot: $t');
     } catch (e) {
       debugPrint('[GeoTask] exit err: $e');
     }
@@ -224,44 +214,19 @@ class _GeofenceHandler extends TaskHandler {
 
   Future<void> _onEnter() async {
     final t = _timeStr();
-    final d = _todayKey();
     try {
-      // 외출 시간으로 경과 계산
-      String dur = '';
-      try {
-        final doc = await FirebaseFirestore.instance
-            .doc('users/$_uid/data/today').get();
-        if (doc.exists) {
-          final tr = ((doc.data()!['timeRecords'] as Map?)?[d] as Map?);
-          final o = tr?['outing'] as String?;
-          if (o != null) {
-            final op = o.split(':').map(int.parse).toList();
-            final rp = t.split(':').map(int.parse).toList();
-            final m = (rp[0] * 60 + rp[1]) - (op[0] * 60 + op[1]);
-            if (m > 0) {
-              dur = ' (${m ~/ 60}h${(m % 60).toString().padLeft(2, '0')}m)';
-            }
-          }
-        }
-      } catch (_) {}
+      // data/iot에만 기록 — CF onIotWrite가 timeRecords + 텔레그램 처리
+      await FirebaseFirestore.instance.doc('users/$_uid/data/iot').update({
+        'movement.type': 'home',
+        'movement.returnedAt': FieldValue.serverTimestamp(),
+        'movement.returnedAtLocal': t,
+        'movement.source': 'geofence_fg',
+      });
 
-      // Firestore today + study
-      final ref = FirebaseFirestore.instance.doc('users/$_uid/data/today');
-      try {
-        await ref.update({'timeRecords.$d.returnHome': t});
-      } catch (_) {
-        await ref.set({'timeRecords': {d: {'returnHome': t}}}, SetOptions(merge: true));
-      }
-      await FirebaseFirestore.instance.doc('users/$_uid/data/study').set({
-        'timeRecords': {d: {'returnHome': t}}
-      }, SetOptions(merge: true));
-
-      // DayState
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('nfc_state', 'returned');
-      await prefs.setString('nfc_state_date', d);
-
-      await _sendBoth('🏠 귀가 $t$dur');
+      await prefs.setString('nfc_state_date', _todayKey());
+      debugPrint('[GeoTask] enter event → iot: $t');
     } catch (e) {
       debugPrint('[GeoTask] enter err: $e');
     }
@@ -287,10 +252,13 @@ class FcmService {
 
   void _handleFcmAction(Map<String, dynamic> data) {
     final type = data['type'];
+    // CF가 이미 timeRecords 기록 → UI 상태만 전환
     if (type == 'wake') {
-      NfcService().triggerRole(NfcTagRole.wake);
-    } else if (type == 'outing') {
-      NfcService().triggerRole(NfcTagRole.outing);
+      NfcService().forceState(DayState.awake);
+    } else if (type == 'outing' || type == 'studying') {
+      NfcService().forceState(DayState.outing);
+    } else if (type == 'returnHome') {
+      NfcService().forceState(DayState.returned);
     }
   }
 

@@ -38,7 +38,6 @@ class _CalendarScreenState extends State<CalendarScreen>
   List<String> _selectedMemos = [];
   TimeRecord? _selectedTimeRecord;
   StudyTimeRecord? _selectedStudyRecord;
-  DailyGrade? _selectedGrade;
   List<FocusCycle> _selectedFocusCycles = [];
   List<String> _restDays = [];
   Map<String, StudyTimeRecord> _monthStudyRecords = {};
@@ -304,18 +303,7 @@ class _CalendarScreenState extends State<CalendarScreen>
       _selectedCustomTasks = [];
     }
 
-    // grade 계산
     _selectedStudyRecord = _monthStudyRecords[ds];
-    if (_selectedStudyRecord != null && _selectedStudyRecord!.effectiveMinutes > 0) {
-      _selectedGrade = DailyGrade.calculate(
-        date: ds,
-        wakeTime: _selectedTimeRecord?.wake,
-        studyStartTime: _selectedTimeRecord?.study,
-        effectiveMinutes: _selectedStudyRecord!.effectiveMinutes,
-      );
-    } else {
-      _selectedGrade = null;
-    }
   }
 
   void _changeMonth(int delta) {
@@ -598,6 +586,11 @@ class _CalendarScreenState extends State<CalendarScreen>
                   ),
                 ),
               ),
+            )
+          // ── 빈 날 (공부 안 한 과거) — 대각 빗금 + 붉은 틴트 ──
+          else if (fillPct == 0 && isPast && !isSunday && !isRestDay)
+            Positioned.fill(
+              child: CustomPaint(painter: _EmptyDayPainter(dk: _dk)),
             ),
           // ── 글래스 오버레이 ──
           Positioned.fill(child: DecoratedBox(
@@ -663,9 +656,10 @@ class _CalendarScreenState extends State<CalendarScreen>
                     style: TextStyle(
                       fontSize: 9, fontWeight: FontWeight.w800,
                       color: planDDays.first.color)))
-                else if (timeLabel.isEmpty && isSunday && !isFuture)
+                else if (timeLabel.isEmpty && isSunday && !isFuture && !isToday)
                   Center(child: Text('OFF', style: TextStyle(
-                    fontSize: 8, fontWeight: FontWeight.w600, color: _textMuted.withOpacity(0.4)))),
+                    fontSize: 8, fontWeight: FontWeight.w600,
+                    color: _textMuted.withOpacity(0.4)))),
                 const Spacer(),
                 // ★ 2-A: Plan 태그 색상 바
                 if (dailyPlan != null && dailyPlan.tag != null && timeLabel.isEmpty)
@@ -847,4 +841,53 @@ class _CalendarScreenState extends State<CalendarScreen>
     ]);
   }
 
+}
+
+/// 공부 안 한 과거 날짜 — 강렬한 대각 빗금 + 붉은 바닥
+class _EmptyDayPainter extends CustomPainter {
+  final bool dk;
+  const _EmptyDayPainter({required this.dk});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 진한 배경
+    final bgPaint = Paint()
+      ..color = dk
+        ? const Color(0xFF2A0A0A).withOpacity(0.7)
+        : const Color(0xFFFCE4E4);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    // 굵은 대각 빗금
+    final linePaint = Paint()
+      ..color = dk
+        ? const Color(0xFFEF4444).withOpacity(0.2)
+        : const Color(0xFFEF4444).withOpacity(0.15)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+
+    const gap = 6.0;
+    final maxDist = size.width + size.height;
+    for (double d = 0; d < maxDist; d += gap) {
+      final x0 = d < size.height ? 0.0 : d - size.height;
+      final y0 = d < size.height ? d : size.height;
+      final x1 = d < size.width ? d : size.width;
+      final y1 = d < size.width ? 0.0 : d - size.width;
+      canvas.drawLine(Offset(x0, y0), Offset(x1, y1), linePaint);
+    }
+
+    // 바닥 붉은 그라디언트 (마른 바닥)
+    final bottomPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.bottomCenter, end: Alignment.center,
+        colors: [
+          dk ? const Color(0xFFB91C1C).withOpacity(0.25)
+             : const Color(0xFFEF4444).withOpacity(0.12),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bottomPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _EmptyDayPainter old) => dk != old.dk;
 }

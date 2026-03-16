@@ -10,6 +10,8 @@ const UID = "sJ8Pxusw9gR0tNR44RhkIge7OiG2";
 const TUYA_BASE = "https://openapi.tuyaus.com";
 const MY_BOT_TOKEN = "8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo";
 const MY_CHAT_ID = "8724548311";
+const GF_BOT_TOKEN = "8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc";
+const GF_CHAT_ID = "8624466505";
 const KAKAO_REST_KEY = "8987f9dd586416344444c7a59b5f0e73";
 
 // ═══ Haversine 거리 계산 (미터) ═══
@@ -225,20 +227,23 @@ async function checkMovementPending(iotDoc) {
   const dateStr = kstNow.toISOString().slice(0, 10);
   const outTimeStr = movement.leftAtLocal || "??:??";
 
-  // 하루 첫 외출만 기록 (중복 방지)
-  const studyDoc = await db.doc("users/" + UID + "/data/study").get();
-  const studyData = studyDoc.exists ? studyDoc.data() : {};
-  const tr = (studyData.timeRecords || {})[dateStr] || {};
-  if (tr.outing) {
-    // 이미 외출 기록됨 → pending만 해제
+  // 중복 방지: today doc 기준 (오늘 같은 시간 이미 기록됐으면 skip)
+  const todayDoc = await db.doc("users/" + UID + "/data/today").get();
+  const todayData = todayDoc.exists ? todayDoc.data() : {};
+  const tr = (todayData.timeRecords || {})[dateStr] || {};
+  if (tr.outing === outTimeStr) {
+    // 동일 시간 이미 기록됨 → pending만 해제
     await db.doc("users/" + UID + "/data/iot").update({"movement.pending": false});
     return null;
   }
 
-  // data/study에 외출 시간 기록
+  // data/study + data/today 듀얼 라이트
   const outUpdate = {timeRecords: {}};
   outUpdate.timeRecords[dateStr] = {outing: outTimeStr};
-  await db.doc("users/" + UID + "/data/study").set(outUpdate, {merge: true});
+  await Promise.all([
+    db.doc("users/" + UID + "/data/study").set(outUpdate, {merge: true}),
+    db.doc("users/" + UID + "/data/today").set(outUpdate, {merge: true}),
+  ]);
 
   // 텔레그램
   // ═══ 공부 장소 매칭 ═══
@@ -322,11 +327,134 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+//  onIotWrite — Single Writer for external timeRecords
+//  data/iot 변경 감지 → today+study 듀얼라이트 (유일한 외부 writer)
+// ═══════════════════════════════════════════════════════════
+
+exports.onIotWrite = functions.firestore
+  .document("users/{uid}/data/iot")
+  .onWrite(async (change, context) => {
+    const uid = context.params.uid;
+    if (uid !== UID) return;
+
+    const before = change.before.exists ? change.before.data() : {};
+    const after = change.after.exists ? change.after.data() : {};
+
+    const mvBefore = before.movement || {};
+    const mvAfter = after.movement || {};
+
+    // ── 귀가 감지: movement.type → "home" ──
+    if (mvAfter.type === "home" && mvBefore.type !== "home") {
+      await handleReturnHome(mvAfter, after);
+    }
+
+    // ── Geofence 직접 외출: source=geofence*, type → "out" ──
+    if (mvAfter.type === "out" && mvBefore.type !== "out"
+        && !mvAfter.pending
+        && (mvAfter.source || "").startsWith("geofence")) {
+      await handleGeofenceOuting(mvAfter, after);
+    }
+  });
+
+async function handleReturnHome(movement, iotData) {
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const dateStr = kstNow.toISOString().slice(0, 10);
+  const returnTime = movement.returnedAtLocal || "??:??";
+
+  // 중복 체크
+  const todayDoc = await db.doc("users/" + UID + "/data/today").get();
+  const todayData = todayDoc.exists ? todayDoc.data() : {};
+  const tr = (todayData.timeRecords || {})[dateStr] || {};
+  if (tr.returnHome) return;
+
+  // 듀얼 라이트
+  const returnUpdate = {timeRecords: {}};
+  returnUpdate.timeRecords[dateStr] = {returnHome: returnTime};
+  await Promise.all([
+    db.doc("users/" + UID + "/data/today").set(returnUpdate, {merge: true}),
+    db.doc("users/" + UID + "/data/study").set(returnUpdate, {merge: true}),
+  ]);
+
+  // 경과시간
+  const outTime = tr.outing;
+  let dur = "";
+  if (outTime) {
+    try {
+      const op = outTime.split(":").map(Number);
+      const rp = returnTime.split(":").map(Number);
+      const m = (rp[0] * 60 + rp[1]) - (op[0] * 60 + op[1]);
+      if (m > 0) dur = " (" + Math.floor(m / 60) + "h" + String(m % 60).padStart(2, "0") + "m)";
+    } catch (_) {}
+  }
+
+  // 텔레그램
+  const msg = "🏠 귀가 " + returnTime + dur;
+  await Promise.all([
+    axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+      {chat_id: MY_CHAT_ID, text: msg}).catch(() => {}),
+    axios.post("https://api.telegram.org/bot" + GF_BOT_TOKEN + "/sendMessage",
+      {chat_id: GF_CHAT_ID, text: msg}).catch(() => {}),
+  ]);
+
+  // FCM
+  if (iotData.fcmToken) {
+    try {
+      await admin.messaging().send({
+        token: iotData.fcmToken,
+        data: {type: "returnHome", time: returnTime},
+        android: {priority: "high"},
+      });
+    } catch (e) { console.error("FCM return error:", e.message); }
+  }
+  console.log("Return recorded:", returnTime + dur);
+}
+
+async function handleGeofenceOuting(movement, iotData) {
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const dateStr = kstNow.toISOString().slice(0, 10);
+  const outTime = movement.leftAtLocal || "??:??";
+
+  const todayDoc = await db.doc("users/" + UID + "/data/today").get();
+  const todayData = todayDoc.exists ? todayDoc.data() : {};
+  const tr = (todayData.timeRecords || {})[dateStr] || {};
+  if (tr.outing) return;
+
+  const outUpdate = {timeRecords: {}};
+  outUpdate.timeRecords[dateStr] = {outing: outTime};
+  await Promise.all([
+    db.doc("users/" + UID + "/data/today").set(outUpdate, {merge: true}),
+    db.doc("users/" + UID + "/data/study").set(outUpdate, {merge: true}),
+  ]);
+
+  const lastLoc = iotData.lastLocation || {};
+  let locStr = "";
+  if (lastLoc.latitude && lastLoc.longitude) {
+    locStr = " (" + lastLoc.latitude.toFixed(4) + "," + lastLoc.longitude.toFixed(4) + ")";
+  }
+  const msg = "🚶 외출 " + outTime + locStr;
+  await Promise.all([
+    axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+      {chat_id: MY_CHAT_ID, text: msg}).catch(() => {}),
+    axios.post("https://api.telegram.org/bot" + GF_BOT_TOKEN + "/sendMessage",
+      {chat_id: GF_CHAT_ID, text: msg}).catch(() => {}),
+  ]);
+
+  if (iotData.fcmToken) {
+    try {
+      await admin.messaging().send({
+        token: iotData.fcmToken,
+        data: {type: "outing", time: outTime},
+        android: {priority: "high"},
+      });
+    } catch (e) { console.error("FCM geofence outing error:", e.message); }
+  }
+  console.log("Geofence outing recorded:", outTime);
+}
+
+// ═══════════════════════════════════════════════════════════
 //  🦉 헤드위그 — 여자친구 봇 (즉시 응답, 앱 불필요)
 // ═══════════════════════════════════════════════════════════
 
-const GF_BOT_TOKEN = "8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc";
-const GF_CHAT_ID = "8624466505";
 const HEDWIG_KEYWORDS = ["위치", "어디", "어디야", "where", "뭐해", "/where", "/status"];
 
 // 카카오 역지오코딩 — GPS → 보편적 장소명
