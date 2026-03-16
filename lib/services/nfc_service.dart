@@ -7,6 +7,7 @@ import 'package:nfc_manager/nfc_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
+import '../models/order_models.dart';
 import '../utils/study_date_utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_service.dart';
@@ -367,6 +368,27 @@ class NfcService extends ChangeNotifier with WidgetsBindingObserver {
       if (_movementFirstSnapshot) {
         _movementFirstSnapshot = false;
         _lastMovementType = key;
+
+        // ★ FIX: movement 날짜 검증 — stale 데이터면 상태 복원 스킵
+        final mvDate = movement['date'] as String?;
+        final mvLeftAt = movement['leftAt'];  // Firestore Timestamp
+        bool isStale = false;
+        if (mvDate != null && mvDate != _studyDate()) {
+          isStale = true;
+        } else if (mvLeftAt != null && mvDate == null) {
+          // leftAt Timestamp로 날짜 추정
+          try {
+            final leftDt = (mvLeftAt as Timestamp).toDate();
+            if (_studyDate(leftDt) != _studyDate()) isStale = true;
+          } catch (_) {}
+        }
+
+        if (isStale) {
+          _log('movement 초기 동기화 스킵 — stale 데이터 (date=$mvDate)');
+          notifyListeners();
+          return;
+        }
+
         _log('movement 초기 동기화: type=$type, pending=$pending, state=${_state.name}');
         // 시간 복원
         if (leftLocal != null) _outingTime = leftLocal;

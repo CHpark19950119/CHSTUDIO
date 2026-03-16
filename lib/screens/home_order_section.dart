@@ -416,9 +416,11 @@ class _DaySegment {
   final String label;
   final String emoji;
   final Color color;
+  final String? startEvent;
   const _DaySegment({
     required this.start, required this.end,
-    required this.label, required this.emoji, required this.color});
+    required this.label, required this.emoji, required this.color,
+    this.startEvent});
 }
 
 /// 시간축 마커

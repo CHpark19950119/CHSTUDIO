@@ -98,7 +98,8 @@ extension _HomeDailyLog on _HomeScreenState {
         // 취침은 시점 마커
         segments.add(_DaySegment(
           start: curr.time, end: curr.time,
-          label: '취침', emoji: '🛏️', color: const Color(0xFF6B5DAF)));
+          label: '취침', emoji: '🛏️', color: const Color(0xFF6B5DAF),
+          startEvent: 'bedTime'));
         continue;
       } else {
         segEnd = _fmt24Now();
@@ -146,7 +147,8 @@ extension _HomeDailyLog on _HomeScreenState {
       
       segments.add(_DaySegment(
         start: curr.time, end: segEnd,
-        label: label, emoji: _emojiFor(label), color: _colorFor(label)));
+        label: label, emoji: _emojiFor(label), color: _colorFor(label),
+        startEvent: curr.type));
     }
 
     // ★ B4 FIX: 세그먼트를 시작 시간순으로 최종 정렬
@@ -387,49 +389,58 @@ extension _HomeDailyLog on _HomeScreenState {
                   child: child),
               );
             },
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(children: [
-                // 색상 바
-                Container(width: 3, height: 36,
-                  decoration: BoxDecoration(
-                    color: seg.color, borderRadius: BorderRadius.circular(2))),
-                const SizedBox(width: 10),
-                // 이모지
-                Container(
-                  width: 28, height: 28,
-                  decoration: BoxDecoration(
-                    color: seg.color.withOpacity(_dk ? 0.1 : 0.08),
-                    borderRadius: BorderRadius.circular(8)),
-                  child: Center(child: Text(seg.emoji, style: const TextStyle(fontSize: 14)))),
-                const SizedBox(width: 8),
-                // 활동명 + 시간
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(seg.label, style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w700, color: _textMain)),
-                    Text('${seg.start} → ${seg.end == seg.start ? seg.start : seg.end}',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500,
-                        color: _textMuted, fontFeatures: const [FontFeature.tabularFigures()])),
-                  ],
-                )),
-                // 비율 + 시간 뱃지
-                Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            child: GestureDetector(
+              onTap: seg.startEvent != null ? () => _editSegmentTime(seg) : null,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  // 색상 바
+                  Container(width: 3, height: 36,
+                    decoration: BoxDecoration(
+                      color: seg.color, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 10),
+                  // 이모지
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    width: 28, height: 28,
                     decoration: BoxDecoration(
                       color: seg.color.withOpacity(_dk ? 0.1 : 0.08),
                       borderRadius: BorderRadius.circular(8)),
-                    child: Text(durStr, style: TextStyle(
-                      fontSize: 10, fontWeight: FontWeight.w800, color: seg.color,
-                      fontFeatures: const [FontFeature.tabularFigures()]))),
-                  const SizedBox(height: 2),
-                  Text('$pct%', style: TextStyle(
-                    fontSize: 9, fontWeight: FontWeight.w600,
-                    color: _textMuted.withOpacity(0.7))),
+                    child: Center(child: Text(seg.emoji, style: const TextStyle(fontSize: 14)))),
+                  const SizedBox(width: 8),
+                  // 활동명 + 시간
+                  Expanded(child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(seg.label, style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w700, color: _textMain)),
+                      Text('${seg.start} → ${seg.end == seg.start ? seg.start : seg.end}',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500,
+                          color: _textMuted, fontFeatures: const [FontFeature.tabularFigures()])),
+                    ],
+                  )),
+                  // 비율 + 시간 뱃지
+                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: seg.color.withOpacity(_dk ? 0.1 : 0.08),
+                        borderRadius: BorderRadius.circular(8)),
+                      child: Text(durStr, style: TextStyle(
+                        fontSize: 10, fontWeight: FontWeight.w800, color: seg.color,
+                        fontFeatures: const [FontFeature.tabularFigures()]))),
+                    const SizedBox(height: 2),
+                    Text('$pct%', style: TextStyle(
+                      fontSize: 9, fontWeight: FontWeight.w600,
+                      color: _textMuted.withOpacity(0.7))),
+                  ]),
+                  // 편집 아이콘
+                  if (seg.startEvent != null) ...[
+                    const SizedBox(width: 6),
+                    Icon(Icons.edit_rounded, size: 12,
+                      color: _textMuted.withOpacity(0.3)),
+                  ],
                 ]),
-              ]),
+              ),
             ),
           );
         }),
@@ -525,6 +536,72 @@ extension _HomeDailyLog on _HomeScreenState {
         ],
       ]),
     );
+  }
+
+  /// ★ 세그먼트 탭 → 시간 편집
+  Future<void> _editSegmentTime(_DaySegment seg) async {
+    if (seg.startEvent == null) return;
+
+    int hour = 8, minute = 0;
+    if (seg.start.contains(':')) {
+      final parts = seg.start.split(':');
+      hour = int.tryParse(parts[0]) ?? 8;
+      minute = int.tryParse(parts[1]) ?? 0;
+    }
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: hour, minute: minute),
+      builder: (ctx, child) => MediaQuery(
+        data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
+        child: child!),
+    );
+    if (picked == null || !mounted) return;
+
+    final newTime = '${picked.hour.toString().padLeft(2, '0')}:'
+        '${picked.minute.toString().padLeft(2, '0')}';
+
+    final d = _studyDate();
+    final fb = FirebaseService();
+    final records = await fb.getTimeRecords();
+    final e = records[d];
+
+    String? wake = e?.wake, study = e?.study, studyEnd = e?.studyEnd;
+    String? outing = e?.outing, returnHome = e?.returnHome, bedTime = e?.bedTime;
+    final evt = seg.startEvent!;
+    switch (evt) {
+      case 'wake': wake = newTime; break;
+      case 'outing': outing = newTime; break;
+      case 'studyStart': study = newTime; break;
+      case 'studyEnd': studyEnd = newTime; break;
+      case 'returnHome': returnHome = newTime; break;
+      case 'bedTime': bedTime = newTime; break;
+      default: return;
+    }
+
+    final updated = TimeRecord(
+      date: d, wake: wake, study: study, studyEnd: studyEnd,
+      outing: outing, returnHome: returnHome,
+      arrival: e?.arrival, bedTime: bedTime,
+      mealStart: e?.mealStart, mealEnd: e?.mealEnd,
+      meals: e?.meals, noOuting: e?.noOuting ?? false,
+    );
+    await fb.updateTimeRecord(d, updated);
+
+    _safeSetState(() {
+      _wake = updated.wake;
+      _studyStart = updated.study;
+      _studyEnd = updated.studyEnd;
+      _outing = updated.outing;
+      _returnHome = updated.returnHome;
+      _bedTime = updated.bedTime;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${seg.label} → $newTime'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating));
+    }
   }
 
   String _fmt24Now() => DateFormat('HH:mm').format(DateTime.now());

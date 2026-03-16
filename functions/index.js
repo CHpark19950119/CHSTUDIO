@@ -14,6 +14,17 @@ const GF_BOT_TOKEN = "8613977898:AAEuuoTVARS-a9nrDp85NWHHOYM0lRvmZmc";
 const GF_CHAT_ID = "8624466505";
 const KAKAO_REST_KEY = "8987f9dd586416344444c7a59b5f0e73";
 
+// ═══ 4AM 경계 날짜 (앱 StudyDateUtils.todayKey와 동일) ═══
+function kstStudyDate(kstNow) {
+  if (!kstNow) kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const kstHour = kstNow.getUTCHours();
+  // 새벽 0~3시는 전날로 처리
+  const effective = kstHour < 4
+    ? new Date(kstNow.getTime() - 24 * 60 * 60 * 1000)
+    : kstNow;
+  return effective.toISOString().slice(0, 10);
+}
+
 // ═══ Haversine 거리 계산 (미터) ═══
 function haversineM(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -153,26 +164,30 @@ async function checkWakeAndNotify(iotDoc) {
   const kstHour = kstNow.getUTCHours();
   const kstMin = kstNow.getUTCMinutes();
 
-  // 7시 이전 무시
+  // 7시 이전 무시 (wake는 항상 7시 이후이므로 4AM 경계 무관)
   if (kstHour < 7) return null;
 
-  const dateStr = kstNow.toISOString().slice(0, 10);
+  const dateStr = kstStudyDate(kstNow);
   const timeStr = String(kstHour).padStart(2, "0") + ":" + String(kstMin).padStart(2, "0");
 
   // 오늘 wake 이미 기록되었는지 확인
   const todayDoc = await db.doc("users/" + UID + "/data/today").get();
   const todayData = todayDoc.exists ? todayDoc.data() : {};
-  const tr = (todayData.timeRecords || {})[dateStr] || {};
+  // ★ FIX: today doc은 flat 구조 — timeRecords.wake 직접 확인
+  const todayTr = todayData.timeRecords || {};
+  if (todayTr.wake || todayTr[dateStr]?.wake) return null; // 이미 기상 기록됨
 
-  if (tr.wake) return null; // 이미 기상 기록됨
+  // ★ FIX: today=flat, study=nested 분리 쓰기
+  const studyUpdate = {timeRecords: {}};
+  studyUpdate.timeRecords[dateStr] = {wake: timeStr};
 
-  // Firestore에 기상 기록 (today + study dual-write)
-  const wakeUpdate = {timeRecords: {}};
-  wakeUpdate.timeRecords[dateStr] = {wake: timeStr};
-
+  const todayRef = db.doc("users/" + UID + "/data/today");
   await Promise.all([
-    db.doc("users/" + UID + "/data/today").set(wakeUpdate, {merge: true}),
-    db.doc("users/" + UID + "/data/study").set(wakeUpdate, {merge: true}),
+    // today doc: flat 구조 (update 실패 시 set fallback)
+    todayRef.update({"timeRecords.wake": timeStr, "date": dateStr})
+      .catch(() => todayRef.set({timeRecords: {wake: timeStr}, date: dateStr}, {merge: true})),
+    // study doc: nested 구조
+    db.doc("users/" + UID + "/data/study").set(studyUpdate, {merge: true}),
   ]);
 
   // 텔레그램 (양쪽 발송)
@@ -222,27 +237,28 @@ async function checkMovementPending(iotDoc) {
 
   if (diffMin < 20) return null; // 20분 미경과
 
-  // KST 날짜/시간
+  // KST 날짜/시간 (4AM 경계 적용)
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const dateStr = kstNow.toISOString().slice(0, 10);
+  const dateStr = kstStudyDate(kstNow);
   const outTimeStr = movement.leftAtLocal || "??:??";
 
-  // 중복 방지: today doc 기준 (오늘 같은 시간 이미 기록됐으면 skip)
+  // ★ FIX: today doc flat 구조로 중복 확인
   const todayDoc = await db.doc("users/" + UID + "/data/today").get();
   const todayData = todayDoc.exists ? todayDoc.data() : {};
-  const tr = (todayData.timeRecords || {})[dateStr] || {};
-  if (tr.outing === outTimeStr) {
-    // 동일 시간 이미 기록됨 → pending만 해제
+  const todayTr = todayData.timeRecords || {};
+  if ((todayTr.outing || todayTr[dateStr]?.outing) === outTimeStr) {
     await db.doc("users/" + UID + "/data/iot").update({"movement.pending": false});
     return null;
   }
 
-  // data/study + data/today 듀얼 라이트
-  const outUpdate = {timeRecords: {}};
-  outUpdate.timeRecords[dateStr] = {outing: outTimeStr};
+  // ★ FIX: today=flat, study=nested 분리 쓰기
+  const studyOutUpdate = {timeRecords: {}};
+  studyOutUpdate.timeRecords[dateStr] = {outing: outTimeStr};
+  const todayRef2 = db.doc("users/" + UID + "/data/today");
   await Promise.all([
-    db.doc("users/" + UID + "/data/study").set(outUpdate, {merge: true}),
-    db.doc("users/" + UID + "/data/today").set(outUpdate, {merge: true}),
+    db.doc("users/" + UID + "/data/study").set(studyOutUpdate, {merge: true}),
+    todayRef2.update({"timeRecords.outing": outTimeStr, "date": dateStr})
+      .catch(() => todayRef2.set({timeRecords: {outing: outTimeStr}, date: dateStr}, {merge: true})),
   ]);
 
   // 텔레그램
@@ -358,25 +374,27 @@ exports.onIotWrite = functions.firestore
 
 async function handleReturnHome(movement, iotData) {
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const dateStr = kstNow.toISOString().slice(0, 10);
+  const dateStr = kstStudyDate(kstNow);
   const returnTime = movement.returnedAtLocal || "??:??";
 
-  // 중복 체크
+  // ★ FIX: today doc flat 구조로 중복 확인
   const todayDoc = await db.doc("users/" + UID + "/data/today").get();
   const todayData = todayDoc.exists ? todayDoc.data() : {};
-  const tr = (todayData.timeRecords || {})[dateStr] || {};
-  if (tr.returnHome) return;
+  const todayTr = todayData.timeRecords || {};
+  if (todayTr.returnHome || todayTr[dateStr]?.returnHome) return;
 
-  // 듀얼 라이트
-  const returnUpdate = {timeRecords: {}};
-  returnUpdate.timeRecords[dateStr] = {returnHome: returnTime};
+  // ★ FIX: today=flat, study=nested 분리 쓰기
+  const studyReturnUpdate = {timeRecords: {}};
+  studyReturnUpdate.timeRecords[dateStr] = {returnHome: returnTime};
+  const todayRef3 = db.doc("users/" + UID + "/data/today");
   await Promise.all([
-    db.doc("users/" + UID + "/data/today").set(returnUpdate, {merge: true}),
-    db.doc("users/" + UID + "/data/study").set(returnUpdate, {merge: true}),
+    todayRef3.update({"timeRecords.returnHome": returnTime, "date": dateStr})
+      .catch(() => todayRef3.set({timeRecords: {returnHome: returnTime}, date: dateStr}, {merge: true})),
+    db.doc("users/" + UID + "/data/study").set(studyReturnUpdate, {merge: true}),
   ]);
 
   // 경과시간
-  const outTime = tr.outing;
+  const outTime = todayTr.outing || todayTr[dateStr]?.outing;
   let dur = "";
   if (outTime) {
     try {
@@ -411,19 +429,23 @@ async function handleReturnHome(movement, iotData) {
 
 async function handleGeofenceOuting(movement, iotData) {
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const dateStr = kstNow.toISOString().slice(0, 10);
+  const dateStr = kstStudyDate(kstNow);
   const outTime = movement.leftAtLocal || "??:??";
 
+  // ★ FIX: today doc flat 구조로 중복 확인
   const todayDoc = await db.doc("users/" + UID + "/data/today").get();
   const todayData = todayDoc.exists ? todayDoc.data() : {};
-  const tr = (todayData.timeRecords || {})[dateStr] || {};
-  if (tr.outing) return;
+  const todayTr = todayData.timeRecords || {};
+  if (todayTr.outing || todayTr[dateStr]?.outing) return;
 
-  const outUpdate = {timeRecords: {}};
-  outUpdate.timeRecords[dateStr] = {outing: outTime};
+  // ★ FIX: today=flat, study=nested 분리 쓰기
+  const studyGeoUpdate = {timeRecords: {}};
+  studyGeoUpdate.timeRecords[dateStr] = {outing: outTime};
+  const todayRef4 = db.doc("users/" + UID + "/data/today");
   await Promise.all([
-    db.doc("users/" + UID + "/data/today").set(outUpdate, {merge: true}),
-    db.doc("users/" + UID + "/data/study").set(outUpdate, {merge: true}),
+    todayRef4.update({"timeRecords.outing": outTime, "date": dateStr})
+      .catch(() => todayRef4.set({timeRecords: {outing: outTime}, date: dateStr}, {merge: true})),
+    db.doc("users/" + UID + "/data/study").set(studyGeoUpdate, {merge: true}),
   ]);
 
   const lastLoc = iotData.lastLocation || {};
@@ -641,17 +663,16 @@ exports.girlfriendBotWebhook = functions.https.onRequest(async (req, res) => {
     }
 
     // Read Firestore: today doc (timeRecords) + iot doc (lastLocation)
-    const kstDate = new Date(Date.now() + 9 * 60 * 60 * 1000);
-    const todayStr = kstDate.toISOString().slice(0, 10);
-
+    // ★ FIX: 4AM 경계 + today doc flat 구조 대응
     const [todayDoc, iotDoc] = await Promise.all([
       db.doc("users/" + UID + "/data/today").get(),
       db.doc("users/" + UID + "/data/iot").get(),
     ]);
 
     const todayData = todayDoc.exists ? todayDoc.data() : {};
-    const timeRecords = todayData.timeRecords || {};
-    const timeRecord = timeRecords[todayStr] || null;
+    // today doc flat 구조: timeRecords.wake 직접, nested fallback도 확인
+    const rawTr = todayData.timeRecords || {};
+    const timeRecord = rawTr.wake !== undefined ? rawTr : null;
 
     const iotData = iotDoc.exists ? iotDoc.data() : {};
     const lastLocation = iotData.lastLocation || null;

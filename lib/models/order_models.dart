@@ -179,13 +179,16 @@ class OrderHabit {
   /// ★ v5: 연속일 이력
   List<StreakRecord> streakHistory;
 
+  /// ★ v6: 자동 트리거 ('wake', 'sleep', null)
+  String? autoTrigger;
+
   OrderHabit({
     required this.id, required this.title, this.emoji = '✅',
     this.freq = HabitFreq.daily, this.targetPerWeek = 7,
     List<String>? completedDates, this.nfcTagId,
     String? createdAt, this.archived = false,
     this.rank = 0, this.targetDays = 21, this.settledAt,
-    List<StreakRecord>? streakHistory,
+    List<StreakRecord>? streakHistory, this.autoTrigger,
   })  : completedDates = completedDates ?? [],
         streakHistory = streakHistory ?? [],
         createdAt = createdAt ?? DateTime.now().toIso8601String();
@@ -367,6 +370,7 @@ class OrderHabit {
         streakHistory: (m['streakHistory'] as List?)
             ?.map((e) => StreakRecord.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList() ?? [],
+        autoTrigger: m['autoTrigger'] as String?,
       );
     // 마이그레이션: streakHistory가 비어있으면 자동 계산
     if (habit.streakHistory.isEmpty && habit.completedDates.length > 1) {
@@ -384,6 +388,7 @@ class OrderHabit {
         'rank': rank, 'targetDays': targetDays,
         if (settledAt != null) 'settledAt': settledAt,
         'streakHistory': streakHistory.map((r) => r.toMap()).toList(),
+        if (autoTrigger != null) 'autoTrigger': autoTrigger,
       };
 }
 

@@ -441,6 +441,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// today 문서 파싱 → UI 상태에 반영 (Phase C: 1~2KB 경량 문서)
   void _parseTodayData(Map<String, dynamic> data, String d) {
+    // ★ FIX: 날짜 검증 — today doc의 date가 오늘과 다르면 stale 데이터
+    final docDate = data['date'] as String?;
+    if (docDate != null && docDate != d) {
+      debugPrint('[Home] ⚠️ today doc 날짜 불일치: doc=$docDate, today=$d — stale 데이터 무시');
+      return;
+    }
+
     // timeRecords (today 문서에서는 date 키 없이 바로 들어있음)
     try {
       final tr = data['timeRecords'];

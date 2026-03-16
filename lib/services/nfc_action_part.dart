@@ -56,6 +56,9 @@ extension _NfcActionHandlers on NfcService {
 
       // 버스 도착정보 폴링 시작
       BusService().startPolling();
+
+      // ★ v6: 습관 자동 트리거 (wake)
+      _autoTriggerHabits('wake', dateStr);
     } catch (e) {
       _log('Wake 에러: $e');
     }
@@ -270,6 +273,9 @@ extension _NfcActionHandlers on NfcService {
       _emitAction('sleep', '🛏️', '취침 $tgTime');
       _triggerWidgetUpdate();
 
+      // ★ v6: 습관 자동 트리거 (sleep)
+      _autoTriggerHabits('sleep', dateStr);
+
       // 일일 리포트 + 자동 백업 (비동기, 실패해도 무관)
       Future.delayed(const Duration(seconds: 3), () {
         ReportService().sendDailyReport(dateStr).catchError((_) {});
@@ -347,5 +353,32 @@ extension _NfcActionHandlers on NfcService {
   String? _findTagPlace(NfcTagRole role) {
     for (final t in _tags) { if (t.role == role && t.placeName != null) return t.placeName; }
     return null;
+  }
+
+  /// ★ v6: 습관 자동 트리거 — wake/sleep 이벤트 시 매칭 습관 자동 완료
+  Future<void> _autoTriggerHabits(String trigger, String dateStr) async {
+    try {
+      final fb = FirebaseService();
+      final data = await fb.getStudyData();
+      if (data == null || data['orderData'] == null) return;
+      final orderData = OrderData.fromMap(
+          Map<String, dynamic>.from(data['orderData'] as Map));
+
+      bool changed = false;
+      for (final h in orderData.habits) {
+        if (h.archived || h.isSettled) continue;
+        if (h.autoTrigger != trigger) continue;
+        if (h.isDoneOn(dateStr)) continue;
+        h.toggleDate(dateStr);
+        changed = true;
+        _log('습관 자동완료: ${h.title} ($trigger)');
+      }
+      if (!changed) return;
+
+      await fb.updateField('orderData', orderData.toMap());
+      _log('습관 자동 트리거 완료: $trigger ($dateStr)');
+    } catch (e) {
+      _log('습관 자동 트리거 에러: $e');
+    }
   }
 }
