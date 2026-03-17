@@ -14,7 +14,7 @@ import '../services/weather_service.dart';
 import '../services/telegram_service.dart';
 import '../models/models.dart';
 import 'focus/focus_screen.dart';
-import 'nfc/nfc_screen.dart' hide StatisticsScreen;
+// NFC screen removed — 자동화 기반으로 전환
 import 'settings_screen.dart';
 import 'calendar_screen.dart';
 import 'statistics_screen.dart';
@@ -812,18 +812,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           size: 13, color: _textMuted)),
         const SizedBox(height: 24),
 
-        _sectionHeader('⚡', '자동화'),
-        const SizedBox(height: 10),
-        _toolCard(
-          icon: '📡', label: 'NFC 관리',
-          subtitle: _nfc.tags.isNotEmpty ? '${_nfc.tags.length}개 태그 등록됨' : '태그 등록 및 설정',
-          color: const Color(0xFFB05C8A),
-          onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => NfcScreen()))
-            .then((_) => _load()),
-        ),
-        const SizedBox(height: 20),
-
         _sectionHeader('⚙️', '시스템'),
         const SizedBox(height: 10),
         // ★ #5: 데일리 인사이트
@@ -1016,10 +1004,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ]),
         ])),
         Row(children: [
-          _headerIconBtn(Icons.nfc_rounded, () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => NfcScreen()))
-            .then((_) => _load())),
-          const SizedBox(width: 6),
           _headerIconBtn(Icons.directions_bus_rounded, () async {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('버스 도착정보 조회 중...'), duration: Duration(seconds: 1)));

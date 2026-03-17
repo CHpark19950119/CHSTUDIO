@@ -621,14 +621,11 @@ class SubjectInfo {
 //  v8.5: NFC 태그 모델 (4태그 토글 시스템)
 // ══════════════════════════════════════════
 
-/// NFC 태그 역할 — 5종
-enum NfcTagRole {
-  wake,     // 욕실 → 기상시간
-  outing,   // 현관 → 토글: 외출 ↔ 귀가
-  study,    // 독서대 → 공부시작 / 재개 / 종료
-  sleep,    // 침대 → 취침시간 기록
-  meal,     // 식탁 → 토글: 식사시작 ↔ 식사종료
-}
+/// 액션 타입 (기존 NfcTagRole)
+enum ActionType { wake, outing, study, sleep, meal }
+
+/// @deprecated Use ActionType
+typedef NfcTagRole = ActionType;
 
 class NfcTagConfig {
   final String id;

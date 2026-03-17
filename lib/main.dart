@@ -9,6 +9,9 @@ import 'screens/splash_screen.dart';
 import 'services/sleep_detect_service.dart';
 import 'services/fcm_service.dart';
 
+/// 글로벌 네비게이터 키 — 서비스에서 오버레이 표시용
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FirebaseMessaging.onBackgroundMessage(onFcmBackgroundMessage);
@@ -70,6 +73,7 @@ class _CheonhongAppState extends State<CheonhongApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'CHEONHONG STUDIO',
       debugShowCheckedModeBanner: false,
       theme: BotanicalTheme.light(),

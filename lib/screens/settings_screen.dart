@@ -7,7 +7,7 @@ import '../services/nfc_service.dart';
 import '../services/local_cache_service.dart';
 import '../services/sleep_detect_service.dart';
 import '../services/wake_service.dart';
-import 'nfc/nfc_screen.dart';
+// NFC screen removed
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -103,44 +103,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ═══ NFC & 자동화 진입 카드 ═══
+  // ═══ 자동화 카드 ═══
   Widget _nfcEntryCard() {
-    final tagCount = _nfc.tags.length;
-    return GestureDetector(
-      onTap: () => Navigator.push(context,
-        MaterialPageRoute(builder: (_) => const NfcScreen())),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BotanicalDeco.card(_dk),
-        child: Row(children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: _accent.withOpacity(_dk ? 0.12 : 0.08),
-              borderRadius: BorderRadius.circular(14)),
-            child: Icon(Icons.nfc_rounded, size: 24, color: _accent),
-          ),
-          const SizedBox(width: 16),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('자동화', style: BotanicalTypo.body(
-              size: 15, weight: FontWeight.w700, color: _textMain)),
-            const SizedBox(height: 2),
-            Text('NFC 태그, 거치대 감지, 자동 루틴', style: BotanicalTypo.label(
-              size: 11, color: _textMuted)),
-          ])),
-          if (tagCount > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: _accent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12)),
-              child: Text('$tagCount', style: BotanicalTypo.label(
-                size: 12, weight: FontWeight.w800, color: _accent)),
-            ),
-          const SizedBox(width: 8),
-          Icon(Icons.chevron_right_rounded, color: _textMuted, size: 22),
-        ]),
-      ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BotanicalDeco.card(_dk),
+      child: Row(children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: _accent.withOpacity(_dk ? 0.12 : 0.08),
+            borderRadius: BorderRadius.circular(14)),
+          child: Icon(Icons.auto_awesome_rounded, size: 24, color: _accent),
+        ),
+        const SizedBox(width: 16),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('자동화', style: BotanicalTypo.body(
+            size: 15, weight: FontWeight.w700, color: _textMain)),
+          const SizedBox(height: 2),
+          Text('도어센서, GPS, 안전망, 자동 루틴', style: BotanicalTypo.label(
+            size: 11, color: _textMuted)),
+        ])),
+      ]),
     );
   }
 

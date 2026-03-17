@@ -351,10 +351,6 @@ extension _HomeOrderSection on _HomeScreenState {
   // ══════════════════════════════════════════
   Widget _quickToolsRow() {
     return Row(children: [
-      _quickTool('📡', 'NFC', () => Navigator.push(context,
-        MaterialPageRoute(builder: (_) => NfcScreen()))
-        .then((_) => _load())),
-      const SizedBox(width: 8),
       _quickTool('🚌', '버스', () async {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('버스 도착정보 조회 중...'), duration: Duration(seconds: 1)));

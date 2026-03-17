@@ -880,6 +880,37 @@ class OrderHabitsTab extends StatelessWidget {
     );
   }
 
+  Widget _triggerChip(BuildContext ctx, StateSetter setS,
+      String label, String? value, String? current,
+      void Function(String?) onChanged) {
+    final selected = current == value;
+    return Expanded(child: GestureDetector(
+      onTap: () => onChanged(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+            ? (value == 'wake' ? OC.amber.withOpacity(0.12)
+               : value == 'sleep' ? const Color(0xFF8B5CF6).withOpacity(0.12)
+               : OC.bgSub)
+            : OC.cardHi,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected
+            ? (value == 'wake' ? OC.amber
+               : value == 'sleep' ? const Color(0xFF8B5CF6)
+               : OC.text3)
+            : OC.border)),
+        child: Center(child: Text(label, style: TextStyle(
+          fontSize: 12, fontWeight: FontWeight.w600,
+          color: selected
+            ? (value == 'wake' ? OC.amber
+               : value == 'sleep' ? const Color(0xFF8B5CF6)
+               : OC.text1)
+            : OC.text3))),
+      ),
+    ));
+  }
+
   /// 습관 추가/수정 시트
   void _openHabitSheet(BuildContext context, {OrderHabit? editing}) {
     final isEdit = editing != null;
@@ -889,6 +920,7 @@ class OrderHabitsTab extends StatelessWidget {
     var targetDays = editing?.targetDays ?? 21;
     // ★ v5: 집중 슬롯 3개 미만이면 기본 rank=1
     var rank = editing?.rank ?? (data.focusHabits.length < 3 ? 1 : 0);
+    String? autoTrigger = editing?.autoTrigger;
 
     final targetOptions = [7, 14, 21, 30, 66];
 
@@ -1004,6 +1036,23 @@ class OrderHabitsTab extends StatelessWidget {
                 )),
               ]),
 
+              // ★ 자동 트리거
+              const SizedBox(height: 14),
+              const Align(alignment: Alignment.centerLeft,
+                child: Text('자동 완료', style: TextStyle(fontSize: 12,
+                  fontWeight: FontWeight.w600, color: OC.text2))),
+              const SizedBox(height: 6),
+              Row(children: [
+                _triggerChip(ctx, setS, '수동', null, autoTrigger,
+                  (v) => setS(() => autoTrigger = v)),
+                const SizedBox(width: 8),
+                _triggerChip(ctx, setS, '☀️ 기상', 'wake', autoTrigger,
+                  (v) => setS(() => autoTrigger = v)),
+                const SizedBox(width: 8),
+                _triggerChip(ctx, setS, '🌙 취침', 'sleep', autoTrigger,
+                  (v) => setS(() => autoTrigger = v)),
+              ]),
+
               const SizedBox(height: 16),
               Row(children: [
                 if (isEdit) ...[
@@ -1033,6 +1082,7 @@ class OrderHabitsTab extends StatelessWidget {
                           rank = 0; // 이미 3개 → 미지정으로 강제
                         }
                         editing.rank = rank;
+                        editing.autoTrigger = autoTrigger;
                       } else {
                         // ★ v5: 집중 3개 제한
                         if (rank == 1 && data.focusHabits.length >= 3) {
@@ -1045,6 +1095,7 @@ class OrderHabitsTab extends StatelessWidget {
                           freq: freq,
                           targetDays: targetDays,
                           rank: rank,
+                          autoTrigger: autoTrigger,
                         ));
                       }
                     });

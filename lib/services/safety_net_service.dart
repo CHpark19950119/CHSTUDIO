@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show Colors, showDialog;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +15,8 @@ import 'door_sensor_service.dart';
 import 'meal_service.dart';
 import 'movement_service.dart';
 import 'firebase_service.dart';
+import '../main.dart' show navigatorKey;
+import '../widgets/creature_alert_overlay.dart';
 
 /// 안전망 체크 타입
 enum SafetyCheck {
@@ -310,7 +314,41 @@ class SafetyNetService {
     }
     _shownAlerts[key] = DateTime.now();
 
-    // 알림 액션 버튼
+    // ★ 포그라운드: 크리쳐 오버레이
+    final ctx = navigatorKey.currentContext;
+    if (ctx != null && WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      _showCreatureOverlay(ctx, check, title, body, confirmActionId);
+      _log('Creature alert: $title — $body');
+      return;
+    }
+
+    // ★ 백그라운드: 기존 알림
+    _showNotification(check, title, body, confirmActionId);
+    _log('Notification alert: $title — $body');
+  }
+
+  void _showCreatureOverlay(BuildContext ctx, SafetyCheck check,
+      String title, String body, String confirmActionId) {
+    CreatureAlertOverlay.show(
+      context: ctx,
+      title: title,
+      body: body,
+      confirmLabel: confirmActionId.isNotEmpty ? '맞아' : null,
+      dismissLabel: '아니야',
+      onConfirm: confirmActionId.isNotEmpty ? () {
+        _onNotificationAction(NotificationResponse(
+          notificationResponseType: NotificationResponseType.selectedNotificationAction,
+          actionId: confirmActionId,
+        ));
+      } : null,
+      onDismiss: () {
+        _notifPlugin.cancel(_notifIds[check]!);
+      },
+    );
+  }
+
+  void _showNotification(SafetyCheck check, String title, String body,
+      String confirmActionId) {
     final actions = <AndroidNotificationAction>[];
     if (confirmActionId.isNotEmpty) {
       actions.add(AndroidNotificationAction(
@@ -334,8 +372,6 @@ class SafetyNetService {
       )),
       payload: check.name,
     );
-
-    _log('Alert: $title — $body');
   }
 
   // ═══════════════════════════════════════════
@@ -365,6 +401,14 @@ class SafetyNetService {
     }
     _shownAlerts[key] = DateTime.now();
 
+    // ★ 포그라운드: 크리쳐 장소 오버레이
+    final ctx = navigatorKey.currentContext;
+    if (ctx != null && WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      _showLocationOverlay(ctx);
+      _log('Creature location alert');
+      return;
+    }
+
     _notifPlugin.show(
       _notifIds[SafetyCheck.stayLocation]!,
       '어디에 있어?',
@@ -382,6 +426,41 @@ class SafetyNetService {
       payload: 'stayLocation',
     );
     _log('Alert: 어디에 있어? (체류 감지)');
+  }
+
+  void _showLocationOverlay(BuildContext ctx) {
+    showDialog(
+      context: ctx,
+      barrierDismissible: false,
+      barrierColor: Colors.black87,
+      builder: (_) => CreatureAlertOverlay(
+        title: '어디에 있어?',
+        body: '체류 중인 것 같아요',
+        confirmLabel: null,
+        dismissLabel: null,
+        onConfirm: null,
+        onDismiss: null,
+      ),
+    );
+    // 3개 버튼 별도 다이얼로그 — 크리쳐 오버레이 위에 장소 선택
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (ctx.mounted) {
+        Navigator.of(ctx).pop(); // 기본 오버레이 닫기
+        _showLocationPickerOverlay(ctx);
+      }
+    });
+  }
+
+  void _showLocationPickerOverlay(BuildContext ctx) {
+    CreatureAlertOverlay.show(
+      context: ctx,
+      title: '어디에 있어?',
+      body: '체류 중인 것 같아요',
+      confirmLabel: '스카',
+      dismissLabel: '도서관',
+      onConfirm: () => _recordStayLocation('스카'),
+      onDismiss: () => _recordStayLocation('도서관'),
+    );
   }
 
   /// 체류 장소 Firestore 기록

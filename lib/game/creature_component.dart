@@ -150,13 +150,13 @@ class CreatureComponent extends PositionComponent with HasGameRef, TapCallbacks 
   void onTapDown(TapDownEvent event) {
     _state = _CState.jump;
     _stateTimer = 0;
-    _spawnParticles(30, 3);
+    _spawnParticles(30, 2);
   }
 
   void triggerHappy() {
     _state = _CState.happy;
     _stateTimer = 0;
-    _spawnParticles(18, 10);
+    _spawnParticles(18, 4);
   }
 
   void _spawnParticles(int colorIdx, int count) {
@@ -164,10 +164,10 @@ class CreatureComponent extends PositionComponent with HasGameRef, TapCallbacks 
       _particles.add(_PxParticle(
         x: size.x / 2,
         y: size.y / 4,
-        vx: (_rng.nextDouble() - 0.5) * 30,
-        vy: -15 - _rng.nextDouble() * 20,
+        vx: (_rng.nextDouble() - 0.5) * 20,
+        vy: -10 - _rng.nextDouble() * 12,
         colorIdx: [18, 30, 22, 25, 19][_rng.nextInt(5)],
-        life: 0.8 + _rng.nextDouble() * 0.6,
+        life: 0.5 + _rng.nextDouble() * 0.3,
       ));
     }
   }
