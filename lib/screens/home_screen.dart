@@ -35,7 +35,6 @@ import '../services/library_service.dart';
 import '../services/wake_service.dart';
 import '../services/bus_service.dart';
 import '../utils/study_date_utils.dart';
-// creature_float_button, habitat_screen — 임시 비활성화
 import 'library_seat_map_screen.dart';
 
 part 'home_focus_section.dart';
