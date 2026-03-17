@@ -63,7 +63,8 @@ class _OrderScreenState extends State<OrderScreen> {
   }
 
   void _update(VoidCallback fn) {
-    _safeSetState(fn);
+    fn();               // 데이터 변경은 즉시 적용
+    _safeSetState(() {});  // UI 갱신만 지연 가능
     _save();
   }
 
