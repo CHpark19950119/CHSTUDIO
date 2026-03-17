@@ -81,7 +81,7 @@ class SafetyNetService {
   Future<void> init() async {
     if (_initialized) return;
     final prefs = await SharedPreferences.getInstance();
-    _enabled = prefs.getBool('safety_net_enabled') ?? true;
+    _enabled = prefs.getBool('safety_net_enabled') ?? false;
 
     await _initNotifications();
     await _consumePendingActions();
@@ -190,16 +190,24 @@ class SafetyNetService {
 
     // ── 1. 기상 미감지 ──
     if (routine.state == DayState.idle) {
-      final doorOpened = door.lastDoorState == DoorState.open
-          && door.lastEventTime != null
-          && door.lastEventTime!.day == now.day;
-      final pastNine = now.hour >= 9;
+      // ★ 실제 Firestore wake 기록 확인 — 기록 있으면 스킵
+      final fb = FirebaseService();
+      final records = await fb.getTimeRecords();
+      final todayRecord = records[todayKey];
+      final alreadyWoke = todayRecord?.wake != null;
 
-      if (doorOpened || pastNine) {
-        _maybeAlert(SafetyCheck.wakeMiss, todayKey,
-            title: '아직 자고 있어?',
-            body: pastNine ? '9시가 넘었어요' : '문이 열렸는데 기상 안 됨',
-            confirmActionId: _actionConfirmWake);
+      if (!alreadyWoke) {
+        final doorOpened = door.lastDoorState == DoorState.open
+            && door.lastEventTime != null
+            && door.lastEventTime!.day == now.day;
+        final pastNine = now.hour >= 9;
+
+        if (doorOpened || pastNine) {
+          _maybeAlert(SafetyCheck.wakeMiss, todayKey,
+              title: '아직 자고 있어?',
+              body: pastNine ? '9시가 넘었어요' : '문이 열렸는데 기상 안 됨',
+              confirmActionId: _actionConfirmWake);
+        }
       }
     }
 

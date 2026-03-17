@@ -163,7 +163,7 @@ extension _HomeDailyLog on _HomeScreenState {
       return false;
     });
 
-    // ── Activity Recognition: "이동" 세그먼트 → 이동/체류 세분화 ──
+    // ── Activity Recognition: "이동" 세그먼트 → 이동/체류 세분화 (5분 이상만) ──
     final actTransitions = _nfc.activityTransitions;
     if (actTransitions.isNotEmpty) {
       final refined = <_DaySegment>[];
@@ -184,7 +184,6 @@ extension _HomeDailyLog on _HomeScreenState {
               safeMin(a['time']!).compareTo(safeMin(b['time']!)));
 
         if (relevant.isEmpty) {
-          // transition 없음 → 현재 activity 또는 직전 transition 기준
           final before = actTransitions.where((t) =>
               safeMin(t['time']!) <= segStartMin).toList();
           if (before.isNotEmpty) {
@@ -212,12 +211,14 @@ extension _HomeDailyLog on _HomeScreenState {
           curType = before.last['type'] ?? 'moving';
         }
 
+        // 원시 sub-segments 생성
+        final raw = <_DaySegment>[];
         String cursor = seg.start;
         for (final t in relevant) {
           final tTime = t['time']!;
           if (cursor != tTime && safeMin(cursor) < safeMin(tTime)) {
             final label = curType == 'still' ? '체류' : '이동';
-            refined.add(_DaySegment(
+            raw.add(_DaySegment(
               start: cursor, end: tTime,
               label: label, emoji: _emojiFor(label),
               color: _colorFor(label)));
@@ -225,14 +226,43 @@ extension _HomeDailyLog on _HomeScreenState {
           cursor = tTime;
           curType = t['type'] ?? 'moving';
         }
-        // 남은 구간
         if (safeMin(cursor) < segEndMin) {
           final label = curType == 'still' ? '체류' : '이동';
-          refined.add(_DaySegment(
+          raw.add(_DaySegment(
             start: cursor, end: seg.end,
             label: label, emoji: _emojiFor(label),
             color: _colorFor(label)));
         }
+
+        // ★ 5분 미만 세그먼트를 인접 세그먼트에 병합
+        final merged = <_DaySegment>[];
+        for (final r in raw) {
+          final dur = safeMin(r.end) - safeMin(r.start);
+          if (dur < 5 && merged.isNotEmpty) {
+            // 짧은 세그먼트 → 이전 세그먼트에 흡수
+            final prev = merged.removeLast();
+            merged.add(_DaySegment(
+              start: prev.start, end: r.end,
+              label: prev.label, emoji: prev.emoji,
+              color: prev.color));
+          } else if (dur < 5 && merged.isEmpty) {
+            // 첫 세그먼트가 짧으면 일단 추가 (다음에서 병합)
+            merged.add(r);
+          } else {
+            // 충분히 긴 세그먼트
+            if (merged.isNotEmpty && merged.last.label == r.label) {
+              // 같은 라벨이면 합치기
+              final prev = merged.removeLast();
+              merged.add(_DaySegment(
+                start: prev.start, end: r.end,
+                label: prev.label, emoji: prev.emoji,
+                color: prev.color));
+            } else {
+              merged.add(r);
+            }
+          }
+        }
+        refined.addAll(merged.isNotEmpty ? merged : [seg]);
       }
       segments
         ..clear()
@@ -279,7 +309,7 @@ extension _HomeDailyLog on _HomeScreenState {
           const Spacer(),
           // ── 수정 버튼 ──
           GestureDetector(
-            onTap: () => _editTimeField('wake', '기상', _wake),
+            onTap: () => _editTimeField('', '데일리 로그', null),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               margin: const EdgeInsets.only(right: 6),
