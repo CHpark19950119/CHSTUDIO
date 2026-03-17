@@ -110,12 +110,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final List<Animation<Offset>> _slideAnims = [];
   static const _cardCount = 6;
 
-  // ★ 작업4: 모션 이펙트 컨트롤러
-  late AnimationController _breathCtrl;   // A) Breathing Glow (3초)
-  late AnimationController _particleCtrl; // B) Floating Particles (10초)
-  late AnimationController _blobCtrl;     // C) Morphing Blob (8초)
-  late AnimationController _shimmerCtrl;  // D) Shimmer Scan (2.5초)
-  late AnimationController _pulseCtrl;    // F) Pulse Ring (2초)
   late AnimationController _tabFadeCtrl;  // ★ Tab transition (200ms)
 
   @override
@@ -146,12 +140,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _runStartup();
     WeatherService().checkMorningWeatherAlert(); // ★ 아침 비/눈 Telegram 알림
 
-    // ★ 작업4: 모션 이펙트 초기화
-    _breathCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
-    _particleCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat();
-    _blobCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat();
-    _shimmerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2500))..repeat();
-    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
     _tabFadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
 
     _nfc.addListener(_onNfcChanged);
@@ -169,12 +157,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _streamDebounce?.cancel();
     _nfc.removeListener(_onNfcChanged);
     _staggerController.dispose();
-    // ★ 모션 이펙트 dispose
-    _breathCtrl.dispose();
-    _particleCtrl.dispose();
-    _blobCtrl.dispose();
-    _shimmerCtrl.dispose();
-    _pulseCtrl.dispose();
     _tabFadeCtrl.dispose();
     super.dispose();
   }
