@@ -23,7 +23,6 @@ import 'painters.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
 import 'status_editor_sheet.dart';
-import 'focus_records_widget.dart';
 import 'insight_screen.dart';
 import 'order/order_screen.dart';
 import '../models/order_models.dart';

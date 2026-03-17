@@ -13,7 +13,6 @@ import 'services/door_sensor_service.dart';
 import 'services/report_service.dart';
 import 'services/sleep_detect_service.dart';
 import 'services/wake_service.dart';
-import 'services/location_request_service.dart';
 import 'services/widget_render_service.dart';
 import 'services/fcm_service.dart';
 import 'services/safety_net_service.dart';
@@ -58,7 +57,6 @@ class AppInit {
       WakeService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
       SleepDetectService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
       FcmService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
-      LocationRequestService().init().timeout(const Duration(seconds: 5)).catchError((_) {}),
     ]);
 
     // ── Phase 4c: 안전망 서비스 ──
