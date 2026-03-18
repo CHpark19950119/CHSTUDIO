@@ -29,9 +29,7 @@ dependencies:
   http: ^1.6.0
   home_widget: ^0.7.0
   lottie: ^3.1.0
-  image_picker: ^1.0.7
   firebase_storage: ^13.0.6
-  cloud_functions: 6.0.6
   firebase_messaging: ^16.1.2
   flame: ^1.21.0
   hive: ^2.2.3
@@ -61,13 +59,8 @@ flutter:
   assets:
     - assets/Book_Loader.json
     - assets/books_focus.json
-    - assets/habitat/
-    - assets/habitat/Furniture/
-    - assets/habitat/House/
     - assets/image/
     - assets/roadmap/
     - assets/허락_전반_01-05.html
     - assets/허락_후반_06-11.html
-    - assets/박천홍_인생로드맵_v12.html
-    - assets/roadmap/박천홍_인생로드맵_v13.html
   

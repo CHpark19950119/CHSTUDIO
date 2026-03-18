@@ -120,6 +120,53 @@ class BotanicalColors {
 }
 
 // ═══════════════════════════════════════════════════════════
+// Spacing & Radius
+// ═══════════════════════════════════════════════════════════
+
+class BotanicalSpacing {
+  BotanicalSpacing._();
+
+  // ─── Border Radius ───
+  static const double radiusXs = 8;
+  static const double radiusSm = 12;
+  static const double radiusMd = 16;
+  static const double radiusLg = 22;
+  static const double radiusXl = 28;
+
+  static final borderRadiusXs = BorderRadius.circular(radiusXs);
+  static final borderRadiusSm = BorderRadius.circular(radiusSm);
+  static final borderRadiusMd = BorderRadius.circular(radiusMd);
+  static final borderRadiusLg = BorderRadius.circular(radiusLg);
+  static final borderRadiusXl = BorderRadius.circular(radiusXl);
+
+  // ─── Padding ───
+  static const double padXs = 4;
+  static const double padSm = 8;
+  static const double padMd = 12;
+  static const double padLg = 16;
+  static const double padXl = 20;
+  static const double padXxl = 24;
+
+  // ─── Gap (between items) ───
+  static const double gapXs = 4;
+  static const double gapSm = 8;
+  static const double gapMd = 12;
+  static const double gapLg = 16;
+  static const double gapXl = 20;
+
+  // ─── Helpers ───
+  static const hGapXs = SizedBox(width: 4);
+  static const hGapSm = SizedBox(width: 8);
+  static const hGapMd = SizedBox(width: 12);
+  static const hGapLg = SizedBox(width: 16);
+  static const vGapXs = SizedBox(height: 4);
+  static const vGapSm = SizedBox(height: 8);
+  static const vGapMd = SizedBox(height: 12);
+  static const vGapLg = SizedBox(height: 16);
+  static const vGapXl = SizedBox(height: 20);
+}
+
+// ═══════════════════════════════════════════════════════════
 // Typography
 // ═══════════════════════════════════════════════════════════
 

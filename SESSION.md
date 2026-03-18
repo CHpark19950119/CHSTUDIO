@@ -3,63 +3,67 @@
 > 세션 종료 시 자동 업데이트됨. 다음 세션 시작 시 이 파일부터 읽는다.
 
 ## 마지막 세션
-- **날짜**: 2026-03-18
-- **버전**: v10.13.1
+- **날짜**: 2026-03-19
+- **버전**: v10.14.0 (미반영, 커밋만)
+- **커밋**: `ac6d286` feat: 크리처 알람 v2 + 데이터 무결성 + 습관 확장 + UI 개선
 
-## 작업 중이던 것
-### 1. 집 칩거(Home Day) 모드 — 신규 기능 (미커밋)
-- `_isHomeDay` getter: 기상 후 3시간+ 외출 없으면 자동 감지, 또는 수동 `_noOuting`
-- `_homeDayBanner()`: 홈 대시보드에 칩거 배너 (시간대별 메시지 + 재택 시간)
-- `_homeDayPage()`: 칩거 전용 대시보드 (~200줄) — 히어로카드, 퀵액션, 컴팩트 레이아웃
-- `home_routine_card.dart`: 외출 없으면 🏡 칩거 표시
-- `home_daily_log.dart`: `_noOuting` → `_isHomeDay` 4곳 교체
-- **상태**: 코드 작성 완료, 미커밋, 미테스트
+## 이번 세션 완료 작업
 
-### 2. 포커스 화장실 버튼 제거 (미커밋)
-- `focus_screen.dart`: `_imBathroomBtn`, `_showBathroomDialog`, `_brOption` 삭제 (~64줄)
-- **상태**: 완료
+### 1. 크리처 알람 시스템 v2
+- 분기 이벤트 4개: homeDayConfirm, autoWakeConfirm, studyEndConfirm, lateMealReminder
+- 크리처 무드: neutral/worried/curious/proud/sleepy + 오버레이 색상 변화
+- 메시지 뱅크: SafetyCheck별 3개 한국어 랜덤 (creature_mood.dart)
 
-### 3. 문 열림 테스트 버튼 (미커밋)
-- `settings_screen.dart`: "🚪 문 열림 테스트" 버튼 (idle→문열림→awake 검증)
-- `door_sensor_service.dart`: `emitTestEvent()` 추가
-- `wake_service.dart`: `resetForTest()` 추가
-- **상태**: 완료
+### 2. 데이터 무결성 가디언
+- TimeRecord.validate() — 포맷/순서 검증 → 포맷에러 시 쓰기 차단
+- Write-back verify — 3초 후 서버 읽기 비교 → 재시도
+- 듀얼 문서 동기화 — study↔today doc 비교 → lastModified 기준 복구
+- 캐시 신선도 — 30분+ → 서버 리프레시
 
-### 4. Auto-wake 버그 수정 (미커밋)
-- `day_action_part.dart`: 이미 기상 기록 있을 때 auto-wake → 상태만 복원 (Firestore 안 건드림)
-- **상태**: 완료
+### 3. DataAuditService (신규)
+- 앱 시작 1일 1회: TimeRecord 정리, 듀얼 문서 동기화, 14일+ 데이터 삭제, OrderData 중복 감지
+- `runForced()` — 설정 화면에서 수동 실행 가능
 
-### 5. Codemagic CI 설정 (미커밋)
-- `codemagic.yaml`: master push 트리거 추가
-- `codemagic_build.sh`: 빌드 스크립트 (untracked)
-- **상태**: 설정 완료, 미검증
+### 4. 쓰기 보호 강화
+- silent `.catchError((_) {})` 6곳 → debugPrint 로깅
+- Order `_save()` 뮤텍스 + 큐잉 (동시 쓰기 방지)
+- Rollover 중복 방지 (`_rollingOver` 플래그 + date 먼저 마킹)
 
-## 미커밋 파일 (9 + 1 untracked)
-| 파일 | 변경 | 목적 |
-|------|------|------|
-| `codemagic.yaml` | +6 | CI 트리거 설정 |
-| `codemagic_build.sh` | new | 빌드 스크립트 |
-| `lib/screens/focus/focus_screen.dart` | -64 | 화장실 버튼 제거 |
-| `lib/screens/home_daily_log.dart` | ~8 | _noOuting→_isHomeDay |
-| `lib/screens/home_routine_card.dart` | ~12 | 칩거 모드 표시 |
-| `lib/screens/home_screen.dart` | +321 | 칩거 배너+대시보드+_isHomeDay |
-| `lib/screens/settings_screen.dart` | +49 | 문 열림 테스트 버튼 |
-| `lib/services/day_action_part.dart` | ~11 | auto-wake 버그 수정 |
-| `lib/services/door_sensor_service.dart` | +13 | emitTestEvent() |
-| `lib/services/wake_service.dart` | +8 | resetForTest() |
+### 5. 칩거 모드 연결 + 토글
+- SafetyNet homeDayConfirm → Firestore noOuting → DayService notify → 홈 UI 전환
+- 칩거 배너에 X 버튼 (수동 해제)
+- rollover 시 자동 리셋
+
+### 6. 진행도 1차/2차 탭 분리
+- 기존 칩 필터 → TabBar (전체 | 1차 PSAT | 2차 전공)
+- 1차/2차 탭: 라운드 요약 카드 + 과목별 미니카드 그리드
+
+### 7. 습관 autoTrigger 확장
+- 트리거 종류: wake, sleep + study, outing, meal (5개)
+- 시간 조건부: triggerTime 설정 시 해당 시간에 조건 체크
+- UI: 오토뱃지 (⚡📚공부 22:00), 시트에 트리거 6칩 + 시간 피커
+
+### 8. 데일리로그 공부→포커스/휴식 세분화
+- FocusCycle 데이터로 studyStart~studyEnd 구간 분할
+- 포커스 세션 = "공부📖", 나머지 = "휴식☕"
+
+### 9. 오더 목표 컴팩트 뷰
+- 카드 높이 절반 (제목+D-Day+%+프로그레스바 2줄)
+
+## 미커밋 파일
+- `CODEMAGIC_BUILD.md` (untracked, 이전 세션)
 
 ## 결정사항
-- 칩거 감지 기준: 기상 후 **3시간**(180분) — 너무 짧으면 오탐 가능
-- `_homeDayPage()`는 만들어졌지만 아직 탭/라우팅에 연결 안 됨 (배너만 표시 중)
+- 투두→진행도 목표 연결 UI — 보류 (별로)
+- 칩거 감지 기준: 기상 후 3시간(180분)
+- 데일리로그: 포커스 외 시간 = "휴식" (공부 아님)
 
 ## 다음 할 일
-- [ ] 미커밋 변경사항 커밋
-- [ ] 빌드 + 폰 테스트
-- [ ] `_homeDayPage()` 실제 연결 (탭 0에서 칩거 시 자동 전환?)
-- [ ] 습관 autoTrigger UI
-- [ ] 오염된 Firestore 데이터 정리
-- [ ] 투두→진행도 목표 연결 UI
+- [ ] CHANGELOG.md 업데이트 (v10.14.0)
+- [ ] 폰 테스트 후 버그 수정
+- [ ] DataAuditService 설정 화면 연동 (수동 실행 버튼)
+- [ ] Codemagic CI 검증
 
 ## 알려진 이슈
-- `_homeDayPage()`가 호출되는 경로 없음 — 위젯만 존재
 - Codemagic CI 미검증
+- 서명: release 빌드가 debug keystore 사용 중 (build.gradle.kts line 36)
