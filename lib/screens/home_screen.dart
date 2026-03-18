@@ -65,7 +65,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int? _outingMinutes;
   int _effMin = 0;
   WeatherData? _weatherData;
-  bool _noOuting = false; // ★ v10: 외출 안하는 날
+  bool _noOuting = false; // ★ v10: 외출 안하는 날 (수동)
+
+  /// ★ 집 칩거 자동 감지: 기상 후 3시간+ 외출 없음 OR 수동 _noOuting
+  bool get _isHomeDay {
+    if (_noOuting) return true;
+    if (_wake == null || _outing != null) return false;
+    try {
+      final now = DateTime.now();
+      final p = _wake!.split(':');
+      final wakeTime = DateTime(now.year, now.month, now.day,
+          int.parse(p[0]), int.parse(p[1]));
+      return now.difference(wakeTime).inMinutes >= 180;
+    } catch (_) { return false; }
+  }
   int _tab = 0;
   int _pendingTab = 0;
   double _tabFadeValue = 1.0;
@@ -162,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _onNfcChanged() {
     if (!mounted) return;
-    // ★ DayService movement times → UI 즉시 반영 (CF 비동기 대기 불필요)
+    // ★ DayService state → UI 즉시 반영 (CF 비동기 대기 불필요)
     if (_nfc.isOut && _nfc.outingTime != null) {
       _outing = _nfc.outingTime;
       _returnHome = null;
@@ -624,7 +637,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: IndexedStack(
             index: _tab,
             children: [
-              SafeArea(child: _dashboardPage()),
+              SafeArea(child: _isHomeDay ? _homeDayPage() : _dashboardPage()),
               SafeArea(child: _todoPage()),
               SafeArea(child: _focusPage()),
               SafeArea(child: _recordsPage()),
@@ -747,6 +760,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           if (_ft.isRunning) ...[
             const SizedBox(height: 10),
             _staggered(2, _activeFocusBanner()),
+          ],
+          // ═══ 집 칩거 배너 ═══
+          if (_isHomeDay) ...[
+            const SizedBox(height: 10),
+            _staggered(2, _homeDayBanner()),
           ],
           const SizedBox(height: 16),
 
@@ -1220,6 +1238,302 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           size: 9, color: _dk ? Colors.white38 : BotanicalColors.textMuted)),
       ]),
     );
+  }
+
+  // ══════════════════════════════════════════
+  //  ★ 집 칩거 배너
+  // ══════════════════════════════════════════
+
+  Widget _homeDayBanner() {
+    // 기상 후 경과시간
+    int homeMinutes = 0;
+    if (_wake != null) {
+      try {
+        final now = DateTime.now();
+        final p = _wake!.split(':');
+        final wakeTime = DateTime(now.year, now.month, now.day,
+            int.parse(p[0]), int.parse(p[1]));
+        homeMinutes = now.difference(wakeTime).inMinutes.clamp(0, 1440);
+      } catch (_) {}
+    }
+    final homeH = homeMinutes ~/ 60;
+    final homeM = homeMinutes % 60;
+
+    // 시간대별 메시지
+    final hour = DateTime.now().hour;
+    final String mood;
+    final String sub;
+    if (hour < 12) {
+      mood = '조용한 오전';
+      sub = '집에서 차분하게 시작하는 하루';
+    } else if (hour < 17) {
+      mood = '느긋한 오후';
+      sub = '바깥 없이도 충분한 하루';
+    } else {
+      mood = '고요한 저녁';
+      sub = '오늘 하루 집에서 보냈어요';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: _dk
+            ? [const Color(0xFF1B2338), const Color(0xFF1A2030)]
+            : [const Color(0xFFF0F0FA), const Color(0xFFEBF0F9)]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF5B7ABF).withOpacity(_dk ? 0.25 : 0.15))),
+      child: Row(children: [
+        // 집 아이콘
+        Container(
+          width: 42, height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xFF5B7ABF).withOpacity(_dk ? 0.15 : 0.1),
+            borderRadius: BorderRadius.circular(12)),
+          child: const Center(child: Text('🏡', style: TextStyle(fontSize: 20)))),
+        const SizedBox(width: 12),
+        Expanded(child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(mood, style: BotanicalTypo.label(
+            size: 13, weight: FontWeight.w800,
+            color: _dk ? const Color(0xFFA8BFEF) : const Color(0xFF3D5A99))),
+          const SizedBox(height: 2),
+          Text(sub, style: BotanicalTypo.label(
+            size: 10, color: _textMuted)),
+        ])),
+        // 재택 시간
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF5B7ABF).withOpacity(_dk ? 0.12 : 0.08),
+            borderRadius: BorderRadius.circular(10)),
+          child: Column(children: [
+            Text('${homeH}h ${homeM}m', style: BotanicalTypo.number(
+              size: 13, weight: FontWeight.w700,
+              color: _dk ? const Color(0xFFA8BFEF) : const Color(0xFF3D5A99))),
+            Text('재택', style: BotanicalTypo.label(
+              size: 9, color: _textMuted)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  // ══════════════════════════════════════════
+  //  ★ 집 칩거 전용 대시보드
+  // ══════════════════════════════════════════
+
+  Widget _homeDayPage() {
+    // 재택 경과 시간
+    int homeMin = 0;
+    if (_wake != null) {
+      try {
+        final now = DateTime.now();
+        final p = _wake!.split(':');
+        final wt = DateTime(now.year, now.month, now.day, int.parse(p[0]), int.parse(p[1]));
+        homeMin = now.difference(wt).inMinutes.clamp(0, 1440);
+      } catch (_) {}
+    }
+    final homeH = homeMin ~/ 60;
+    final homeM = homeMin % 60;
+
+    // 시간대별 인사
+    final hour = DateTime.now().hour;
+    final String greeting, greetSub;
+    if (hour < 12) {
+      greeting = '고요한 아침';
+      greetSub = '집에서 차분하게 시작하는 하루';
+    } else if (hour < 17) {
+      greeting = '느긋한 오후';
+      greetSub = '나만의 공간에서 집중하는 시간';
+    } else if (hour < 21) {
+      greeting = '편안한 저녁';
+      greetSub = '오늘 하루도 집에서 잘 보냈어요';
+    } else {
+      greeting = '깊은 밤';
+      greetSub = '하루를 마무리할 시간이에요';
+    }
+
+    // 색상 팔레트 (코지 인디고)
+    const hc = Color(0xFF5B7ABF);
+    final hcLight = _dk ? const Color(0xFFA8BFEF) : const Color(0xFF3D5A99);
+    final heroBg = _dk
+      ? const [Color(0xFF151B2E), Color(0xFF1A2038)]
+      : const [Color(0xFFEDF1FA), Color(0xFFE4EAF6)];
+    final cardBg = _dk ? Colors.white.withOpacity(0.04) : Colors.white;
+    final cardBorder = hc.withOpacity(_dk ? 0.15 : 0.1);
+
+    final now = DateTime.now();
+    final wd = ['월','화','수','목','금','토','일'][now.weekday - 1];
+    final w = _weatherData;
+
+    return RefreshIndicator(
+      color: hc,
+      onRefresh: () => _load(),
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        children: [
+          // ═══ HEADER ═══
+          _staggered(0, Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Text('🏡', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
+                Text('HOME DAY', style: BotanicalTypo.label(
+                  size: 11, weight: FontWeight.w800, letterSpacing: 2,
+                  color: hcLight)),
+              ]),
+              const SizedBox(height: 4),
+              Text('${now.month}월 ${now.day}일 ($wd)',
+                style: BotanicalTypo.heading(size: 22, weight: FontWeight.w800, color: _textMain)),
+            ])),
+            if (w != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: hc.withOpacity(_dk ? 0.1 : 0.06),
+                  borderRadius: BorderRadius.circular(10)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(w.emoji, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 4),
+                  Text('${w.temp.round()}°', style: BotanicalTypo.number(
+                    size: 13, weight: FontWeight.w700, color: hcLight)),
+                ]),
+              ),
+            const SizedBox(width: 6),
+            _headerIconBtn(Icons.settings_outlined, () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen())), size: 18),
+          ])),
+          const SizedBox(height: 18),
+
+          // ═══ 히어로 카드 ═══
+          _staggered(1, Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: heroBg),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: hc.withOpacity(_dk ? 0.25 : 0.15))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // 인사
+              Text(greeting, style: BotanicalTypo.heading(
+                size: 24, weight: FontWeight.w800, color: hcLight)),
+              const SizedBox(height: 4),
+              Text(greetSub, style: BotanicalTypo.label(
+                size: 12, color: _textMuted)),
+              const SizedBox(height: 20),
+              // 재택시간 + 순공시간
+              Row(children: [
+                _homeDayStatPill('🏡', '${homeH}h ${homeM}m', '재택', hc),
+                const SizedBox(width: 10),
+                _homeDayStatPill('📖', '${_effMin ~/ 60}h ${(_effMin % 60).toString().padLeft(2, '0')}m', '순공', BotanicalColors.primary),
+                const SizedBox(width: 10),
+                _homeDayStatPill('🍽️', '${_todayMeals.length}회', '식사', const Color(0xFFFF8A65)),
+              ]),
+            ]),
+          )),
+          const SizedBox(height: 14),
+
+          // ═══ 퀵 액션 ═══
+          _staggered(2, Row(children: [
+            _homeDayAction('📖', '공부', _quickStudy,
+              active: _studyStart != null && _studyEnd == null),
+            const SizedBox(width: 8),
+            _homeDayAction('🌙', '취침', _quickSleep,
+              active: _bedTime != null),
+            const SizedBox(width: 8),
+            Expanded(child: GestureDetector(
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                Navigator.push(context, PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => const OrderScreen(),
+                  transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
+                  transitionDuration: const Duration(milliseconds: 200),
+                )).then((_) => _load());
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: cardBg, borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: cardBorder)),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('🧭', style: TextStyle(fontSize: 20)),
+                  const SizedBox(height: 4),
+                  Text('ORDER', style: BotanicalTypo.label(
+                    size: 9, weight: FontWeight.w700, color: _textMuted)),
+                ]),
+              ),
+            )),
+          ])),
+          const SizedBox(height: 14),
+
+          // ═══ 포커스 배너 (진행 중일 때) ═══
+          if (_ft.isRunning) ...[
+            _staggered(2, _activeFocusBanner()),
+            const SizedBox(height: 14),
+          ],
+
+          // ═══ COMPASS (컴팩트) ═══
+          _staggered(3, _orderPortalChip()),
+          const SizedBox(height: 14),
+
+          // ═══ LOG ═══
+          _staggered(4, _dashboardMemoWidget()),
+          const SizedBox(height: 10),
+          _staggered(4, _locationSummaryCard()),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _homeDayStatPill(String emoji, String value, String label, Color c) {
+    return Expanded(child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: c.withOpacity(_dk ? 0.1 : 0.06),
+        borderRadius: BorderRadius.circular(14)),
+      child: Column(children: [
+        Text(emoji, style: const TextStyle(fontSize: 16)),
+        const SizedBox(height: 4),
+        Text(value, style: BotanicalTypo.number(
+          size: 14, weight: FontWeight.w700,
+          color: _dk ? Colors.white.withOpacity(0.85) : c)),
+        Text(label, style: BotanicalTypo.label(
+          size: 9, color: _textMuted)),
+      ]),
+    ));
+  }
+
+  Widget _homeDayAction(String emoji, String label, VoidCallback onTap,
+      {bool active = false}) {
+    final c = active
+      ? (_dk ? const Color(0xFF5B7ABF) : const Color(0xFF3D5A99))
+      : _textMuted;
+    return Expanded(child: GestureDetector(
+      onTap: () { HapticFeedback.selectionClick(); onTap(); },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: active
+            ? const Color(0xFF5B7ABF).withOpacity(_dk ? 0.15 : 0.08)
+            : (_dk ? Colors.white.withOpacity(0.04) : Colors.white),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: active
+              ? const Color(0xFF5B7ABF).withOpacity(0.3)
+              : (_dk ? Colors.white.withOpacity(0.06) : const Color(0xFFE8E4DF)))),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(emoji, style: const TextStyle(fontSize: 20)),
+          const SizedBox(height: 4),
+          Text(label, style: BotanicalTypo.label(
+            size: 9, weight: active ? FontWeight.w800 : FontWeight.w600, color: c)),
+        ]),
+      ),
+    ));
   }
 
   // ══════════════════════════════════════════

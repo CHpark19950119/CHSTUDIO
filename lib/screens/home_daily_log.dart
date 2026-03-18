@@ -48,7 +48,7 @@ extension _HomeDailyLog on _HomeScreenState {
     String _labelBetween(String fromType, String toType) {
       // 두 이벤트 사이의 활동 유형 결정
       // wake 이후 noOuting이면 "재택"으로 표시
-      if (fromType == 'wake') return _noOuting ? '재택' : '준비';
+      if (fromType == 'wake') return _isHomeDay ? '재택' : '준비';
       if (fromType == 'outing') return '이동';
       if (fromType == 'studyStart' || fromType.startsWith('meal_') && fromType.endsWith('_end')) return '공부';
       if (fromType.startsWith('meal_') && fromType.endsWith('_start')) return '식사';
@@ -56,7 +56,7 @@ extension _HomeDailyLog on _HomeScreenState {
       if (fromType == 'mealEnd') return '공부';
       if (fromType == 'studyEnd') return '이동';
       if (fromType == 'returnHome') return '자유';
-      return _noOuting ? '재택' : '준비';
+      return _isHomeDay ? '재택' : '준비';
     }
     
     Color _colorFor(String label) {
@@ -118,9 +118,9 @@ extension _HomeDailyLog on _HomeScreenState {
             // 마지막 세그먼트 (현재까지) → NFC 상태 기반
             if (_nfc.isOut) { label = '이동'; }
             else if (_nfc.isStudying) { label = '공부'; }
-            else if (_noOuting) { label = '재택'; }
+            else if (_isHomeDay) { label = '재택'; }
             else { label = '자유'; }
-          } else if (_noOuting) { label = '재택'; }
+          } else if (_isHomeDay) { label = '재택'; }
           else { label = '자유'; }
           break;
         case 'outing': label = '이동'; break;

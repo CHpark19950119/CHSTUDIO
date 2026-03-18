@@ -34,8 +34,15 @@ extension _DayActionHandlers on DayService {
       final fb = FirebaseService();
       final records = await fb.getTimeRecords().timeout(const Duration(seconds: 5));
       final e = records[dateStr];
-      if (e?.wake != null && !auto) {
-        _emitAction('wake_already', '☀️', '이미 기상 (${e!.wake})');
+      if (e?.wake != null) {
+        // ★ 이미 기상 기록 있으면 Firestore는 건드리지 않고 상태만 복원
+        if (auto) {
+          _routine.setState(DayState.awake);
+          await _routine.saveState();
+          _log('Auto-wake 스킵: 이미 기상 (${e!.wake})');
+        } else {
+          _emitAction('wake_already', '☀️', '이미 기상 (${e!.wake})');
+        }
         return;
       }
       await fb.updateTimeRecord(dateStr, _withFields(dateStr, e, wake: timeStr))

@@ -255,6 +255,19 @@ class DoorSensorService extends ChangeNotifier {
     }
   }
 
+  /// 테스트용: 디바운스/중복체크 우회하여 직접 이벤트 발행
+  void emitTestEvent(DoorState state) {
+    _log('테스트 직접 발행: ${state.name}');
+    final event = DoorEvent(
+      type: state,
+      timestamp: DateTime.now(),
+      sensorId: 'test',
+    );
+    _lastDoorState = state;
+    _lastEventTime = event.timestamp;
+    _eventController.add(event);
+  }
+
   // ═══════════════════════════════════════════
   //  정리
   // ═══════════════════════════════════════════

@@ -976,8 +976,6 @@ class _FocusScreenState extends State<FocusScreen>
                 const SizedBox(width: 6),
                 _imModeBtn('☕', '휴식', 'rest', Colors.orange, st.mode),
                 const SizedBox(width: 6),
-                _imBathroomBtn(),
-                const SizedBox(width: 6),
                 _imActionBtn(Icons.lock_rounded, const Color(0xFF8B5CF6), _lockScreen),
                 const SizedBox(width: 6),
                 _imActionBtn(Icons.home_rounded, Colors.blueAccent, _minimizeToHome),
@@ -1037,30 +1035,6 @@ class _FocusScreenState extends State<FocusScreen>
             ]))))));
   }
 
-  Widget _imBathroomBtn() {
-    final on = _fs.isBathroomBreak;
-    final sec = _fs.bathroomSec;
-    return GestureDetector(
-      onTap: on ? null : _showBathroomDialog,
-      child: ClipRRect(borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-          child: AnimatedContainer(duration: const Duration(milliseconds: 180),
-            width: 48, height: 48,
-            decoration: BoxDecoration(
-              color: on ? Colors.teal.withOpacity(0.22) : Colors.white.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(12),
-              border: on ? Border.all(color: Colors.teal.withOpacity(0.45), width: 1.5)
-                  : Border.all(color: Colors.white.withOpacity(0.05))),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(on ? '⏳' : '🚻', style: const TextStyle(fontSize: 14)),
-              if (on)
-                Text('${sec ~/ 60}:${(sec % 60).toString().padLeft(2, '0')}',
-                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.tealAccent,
-                    fontFeatures: [FontFeature.tabularFigures()]))
-              else
-                Text('화장실', style: TextStyle(fontSize: 8, color: Colors.white.withOpacity(0.35))),
-            ])))));
-  }
 
   Widget _imActionBtn(IconData icon, Color c, VoidCallback onTap, {double size = 22}) {
     return GestureDetector(onTap: onTap,
@@ -1263,44 +1237,6 @@ class _FocusScreenState extends State<FocusScreen>
         fontFeatures: [FontFeature.tabularFigures()])),
     ]));
 
-  void _showBathroomDialog() {
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      backgroundColor: _dk ? const Color(0xFF1C2028) : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Row(children: [
-        const Text('🚻', style: TextStyle(fontSize: 22)),
-        const SizedBox(width: 8),
-        Text('화장실', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _t1)),
-      ]),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        _brOption(ctx, '💧', '소변', '2분'),
-        const SizedBox(height: 8),
-        _brOption(ctx, '🚽', '대변', '5분'),
-      ]),
-    ));
-  }
-
-  Widget _brOption(BuildContext ctx, String emoji, String label, String time) {
-    return GestureDetector(
-      onTap: () { Navigator.pop(ctx); _fs.startBathroomBreak(); },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.teal.withOpacity(_dk ? 0.08 : 0.04),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.teal.withOpacity(0.15))),
-        child: Row(children: [
-          Text(emoji, style: const TextStyle(fontSize: 22)),
-          const SizedBox(width: 10),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _t1)),
-            Text(time, style: TextStyle(fontSize: 10, color: _t3)),
-          ])),
-          Icon(Icons.arrow_forward_ios_rounded, size: 12, color: _t3),
-        ]),
-      ),
-    );
-  }
 
   void _showSubjectPicker(String cur) {
     showModalBottomSheet(context: context,

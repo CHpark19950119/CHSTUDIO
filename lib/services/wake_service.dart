@@ -45,6 +45,14 @@ class SensorWakeDetector implements WakeDetector {
     _sub = null;
   }
 
+  /// 테스트용: _lastWakeDate 리셋 (설정 화면에서 호출)
+  static void resetForTest() {
+    final instance = WakeService();
+    if (instance._detector is SensorWakeDetector) {
+      (instance._detector as SensorWakeDetector)._lastWakeDate = null;
+    }
+  }
+
   void _onDoorEvent(DoorEvent event) {
     if (event.type != DoorState.open) return;
 

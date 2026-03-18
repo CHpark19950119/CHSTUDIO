@@ -8,7 +8,9 @@ import '../services/day_service.dart';
 import '../services/local_cache_service.dart';
 import '../services/sleep_detect_service.dart';
 import '../services/wake_service.dart';
-// NFC screen removed
+import '../models/iot_models.dart';
+import '../services/door_sensor_service.dart';
+import '../services/routine_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -178,6 +180,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(width: 60),
             Text('7시 이전 문 열림은 무시 (새벽 화장실 등)',
               style: BotanicalTypo.label(size: 11, color: _textMuted)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            const SizedBox(width: 60),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFf59e0b).withOpacity(0.15),
+                foregroundColor: const Color(0xFFf59e0b),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Text('🚪', style: TextStyle(fontSize: 14)),
+              label: Text('문 열림 테스트',
+                style: BotanicalTypo.label(size: 11, weight: FontWeight.w700,
+                  color: const Color(0xFFf59e0b))),
+              onPressed: () async {
+                final prevState = _nfc.state;
+                final routine = RoutineService();
+                // ① 강제 idle + 기상기록 리셋
+                routine.forceState(DayState.idle);
+                SensorWakeDetector.resetForTest();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('🔄 idle → 문 열림 테스트 중...'),
+                    duration: Duration(seconds: 1)));
+                await Future.delayed(const Duration(milliseconds: 300));
+                // ② 직접 이벤트 발행 (Firestore/디바운스 우회)
+                DoorSensorService().emitTestEvent(DoorState.open);
+                // ③ 결과 확인
+                await Future.delayed(const Duration(seconds: 1));
+                if (!mounted) return;
+                final newState = _nfc.state;
+                final success = newState == DayState.awake;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(success
+                    ? '✅ 기상 감지 성공! (idle → awake)'
+                    : '❌ 미감지 (state: ${newState.name})'),
+                  duration: const Duration(seconds: 3),
+                  backgroundColor: success ? Colors.green : Colors.red));
+                // ★ 테스트 후 항상 원래 상태 복원
+                if (prevState != DayState.idle) {
+                  routine.forceState(prevState);
+                }
+              },
+            ),
           ]),
         ],
       ]),

@@ -21,12 +21,15 @@ extension _HomeRoutineCard on _HomeScreenState {
         live: _ft.isRunning || (hasStudy && _studyEnd == null),
         sub: _studyEnd,
         onTap: () => _editTimeField('study', '공부', _studyStart)),
-      _RItem(isOut ? '🚶' : '🏠', '외출', isOut || hasReturn,
-        isOut ? _outing : _returnHome, const Color(0xFF3B8A6B),
-        live: isOut,
-        onTap: () => _editTimeField('outing', '외출', _outing)),
-      _RItem('🍽️', '식사', hasMeal, null, const Color(0xFFFF8A65),
-        onTap: () => _editTimeField('meal', '식사', null)),
+      // ★ 집 칩거: 외출 없이 2시간+ → 칩거 모드 표시
+      _isHomeDay && !isOut && !hasReturn
+        ? _RItem('🏡', '칩거', true, null, const Color(0xFF5B7ABF),
+            onTap: () => _editTimeField('outing', '외출', _outing))
+        : _RItem(isOut ? '🚶' : '🏠', '외출', isOut || hasReturn,
+            isOut ? _outing : _returnHome, const Color(0xFF3B8A6B),
+            live: isOut,
+            onTap: () => _editTimeField('outing', '외출', _outing)),
+      _RItem('🍽️', '식사', hasMeal, null, const Color(0xFFFF8A65)),
       _RItem('🌙', '취침', hasBed, _bedTime, const Color(0xFF6B5DAF),
         onTap: () => _editTimeField('bedTime', '취침', _bedTime)),
     ];
