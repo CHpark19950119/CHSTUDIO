@@ -134,42 +134,42 @@ extension _HomeFocusSection on _HomeScreenState {
               fontFeatures: const [FontFeature.tabularFigures()]))),
           const SizedBox(height: 28),
 
-          // ── Subject ──
+          // ── Subject (1차/2차 분리) ──
           _fLabel('SUBJECT'),
           const SizedBox(height: 10),
-          SizedBox(height: 38, child: ListView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            children: SubjectConfig.subjects.entries.map((e) {
-              final sel = _focusSubj == e.key;
-              final c = BotanicalColors.subjectColor(e.key);
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => setState(() => _focusSubj = e.key),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: sel ? c.withOpacity(dk ? 0.18 : 0.10) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: sel ? c.withOpacity(0.45) : _textMuted.withOpacity(0.12),
-                        width: sel ? 1.5 : 1),
-                      boxShadow: sel ? [BoxShadow(color: c.withOpacity(0.10), blurRadius: 10)] : null,
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text(e.value.emoji, style: const TextStyle(fontSize: 14)),
-                      const SizedBox(width: 5),
-                      Text(e.key, style: TextStyle(
-                        fontSize: 12, fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                        color: sel ? c : _textSub)),
-                    ]),
-                  ),
-                ),
-              );
-            }).toList(),
-          )),
+          // 1차 PSAT
+          SizedBox(height: 38, child: Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B6BA5).withOpacity(dk ? 0.15 : 0.08),
+                borderRadius: BorderRadius.circular(4)),
+              child: Text('1차', style: TextStyle(
+                fontSize: 8, fontWeight: FontWeight.w800,
+                color: dk ? const Color(0xFF7EB0E0) : const Color(0xFF3B6BA5))),
+            ),
+            ...SubjectConfig.subjects.entries
+                .where((e) => SubjectConfig.round1Subjects.contains(e.key))
+                .map((e) => _fSubjectChip(e.key, e.value.emoji, dk)),
+          ])),
+          const SizedBox(height: 6),
+          // 2차 전공
+          SizedBox(height: 38, child: Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7A5195).withOpacity(dk ? 0.15 : 0.08),
+                borderRadius: BorderRadius.circular(4)),
+              child: Text('2차', style: TextStyle(
+                fontSize: 8, fontWeight: FontWeight.w800,
+                color: dk ? const Color(0xFFB89AD4) : const Color(0xFF7A5195))),
+            ),
+            ...SubjectConfig.subjects.entries
+                .where((e) => SubjectConfig.round2Subjects.contains(e.key))
+                .map((e) => _fSubjectChip(e.key, e.value.emoji, dk)),
+          ])),
           const SizedBox(height: 24),
 
           // ── Mode ──
@@ -291,6 +291,36 @@ extension _HomeFocusSection on _HomeScreenState {
   }
 
   // ── Helpers ──
+
+  Widget _fSubjectChip(String name, String emoji, bool dk) {
+    final sel = _focusSubj == name;
+    final c = BotanicalColors.subjectColor(name);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () => setState(() => _focusSubj = name),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: sel ? c.withOpacity(dk ? 0.18 : 0.10) : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: sel ? c.withOpacity(0.45) : _textMuted.withOpacity(0.12),
+              width: sel ? 1.5 : 1),
+            boxShadow: sel ? [BoxShadow(color: c.withOpacity(0.10), blurRadius: 10)] : null,
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(emoji, style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 5),
+            Text(name, style: TextStyle(
+              fontSize: 12, fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+              color: sel ? c : _textSub)),
+          ]),
+        ),
+      ),
+    );
+  }
 
   Widget _fLabel(String t) => Padding(
     padding: const EdgeInsets.only(left: 2),

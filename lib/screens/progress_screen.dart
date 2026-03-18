@@ -1754,19 +1754,82 @@ class _ProgressScreenState extends State<ProgressScreen>
                           fontSize: 18,
                           fontWeight: FontWeight.w800)),
                   const SizedBox(height: 16),
-                  // 과목 선택
-                  DropdownButtonFormField<String>(
-                    value: subject,
-                    decoration: _inputDeco('과목'),
-                    items: _subjectConfig.keys
-                        .map((s) => DropdownMenuItem(
-                            value: s,
-                            child: Text(
-                                '${_subjectConfig[s]!.emoji} $s')))
-                        .toList(),
-                    onChanged: (v) => setModalState(
-                        () => subject = v ?? subject),
-                  ),
+                  // 과목 선택 (1차/2차 분리)
+                  const Text('과목', style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700,
+                    color: Color(0xFF64748B))),
+                  const SizedBox(height: 8),
+                  // 1차 PSAT
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B6BA5).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4)),
+                      child: const Text('1차', style: TextStyle(
+                        fontSize: 9, fontWeight: FontWeight.w800,
+                        color: Color(0xFF3B6BA5))),
+                    ),
+                    const SizedBox(width: 8),
+                    ..._subjectConfig.entries
+                        .where((e) => SubjectConfig.round1Subjects.contains(e.key))
+                        .map((e) => Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => subject = e.key),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: subject == e.key
+                                    ? Color(e.value.color).withOpacity(0.15)
+                                    : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: subject == e.key
+                                    ? Color(e.value.color) : Colors.grey.shade300)),
+                              child: Text('${e.value.emoji} ${e.key}', style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w700,
+                                color: subject == e.key
+                                    ? Color(e.value.color) : Colors.grey.shade600)),
+                            ),
+                          ),
+                        )),
+                  ]),
+                  const SizedBox(height: 8),
+                  // 2차 전공
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7A5195).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4)),
+                      child: const Text('2차', style: TextStyle(
+                        fontSize: 9, fontWeight: FontWeight.w800,
+                        color: Color(0xFF7A5195))),
+                    ),
+                    const SizedBox(width: 8),
+                    ..._subjectConfig.entries
+                        .where((e) => SubjectConfig.round2Subjects.contains(e.key))
+                        .map((e) => Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => subject = e.key),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: subject == e.key
+                                    ? Color(e.value.color).withOpacity(0.15)
+                                    : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: subject == e.key
+                                    ? Color(e.value.color) : Colors.grey.shade300)),
+                              child: Text('${e.value.emoji} ${e.key}', style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w700,
+                                color: subject == e.key
+                                    ? Color(e.value.color) : Colors.grey.shade600)),
+                            ),
+                          ),
+                        )),
+                  ]),
                   const SizedBox(height: 12),
                   TextField(
                       controller: titleCtrl,
