@@ -61,6 +61,12 @@ class FirebaseService {
   DateTime? _studyCacheTime;
   bool _refreshingStudy = false;
 
+  /// 캐시 무효화 (외부 서비스용)
+  void invalidateStudyCache() {
+    _studyCache = null;
+    _studyCacheTime = null;
+  }
+
   // ═══ Today doc cache ═══
   Map<String, dynamic>? _todayCache2;
   DateTime? _todayCacheTime2;
@@ -270,7 +276,9 @@ class FirebaseService {
         field: value,
         'lastModified': FieldValue.serverTimestamp(),
         'lastDevice': 'android',
-      }, SetOptions(merge: true)).catchError((_) {});
+      }, SetOptions(merge: true)).catchError((e2) {
+        debugPrint('[FB] updateField set fallback failed: $field — $e2');
+      });
     });
     if (field.startsWith('orderData')) {
       updateTodayField(field, value);

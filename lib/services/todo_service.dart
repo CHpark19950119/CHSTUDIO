@@ -71,12 +71,15 @@ class TodoService {
       'todos.${todos.date}': map,
       'lastModified': DateTime.now().millisecondsSinceEpoch,
       'lastDevice': 'android',
-    }).catchError((_) {
+    }).catchError((e) {
+      debugPrint('[Todos] update failed, trying set: $e');
       _db.doc(_todosDoc).set({
         'todos': {todos.date: map},
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
-      }, SetOptions(merge: true)).catchError((_) {});
+      }, SetOptions(merge: true)).catchError((e2) {
+        debugPrint('[Todos] set fallback failed: $e2');
+      });
     });
 
     // ★ 3) Phase C: today 문서에도 todos 동기화 (오늘 날짜만)

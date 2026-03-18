@@ -16,6 +16,16 @@ extension FirebaseStudyOps on FirebaseService {
   }
 
   Future<void> updateTimeRecord(String date, TimeRecord record) async {
+    // ── B1: TimeRecord 유효성 검증 ──
+    final validation = TimeRecord.validate(record);
+    if (!validation.isValid) {
+      debugPrint('[FB] updateTimeRecord BLOCKED: $validation');
+      // 경고만 — 포맷 에러는 차단, 순서 이상은 경고 후 진행
+      final hasFormatError = validation.errors.any((e) => e.contains('포맷'));
+      if (hasFormatError) return; // 포맷 에러 → 쓰기 차단
+      debugPrint('[FB] updateTimeRecord WARNING: 순서 이상 감지, 쓰기 진행');
+    }
+
     final recordMap = record.toMap();
     debugPrint('[FB] updateTimeRecord: $date');
     LocalCacheService().markWrite();
@@ -29,17 +39,76 @@ extension FirebaseStudyOps on FirebaseService {
       'lastDevice': 'android',
     }).then((_) {
       debugPrint('[FB] updateTimeRecord: OK');
+      // ── B2: 쓰기 후 검증 (3초 딜레이) ──
+      _verifyWriteBack(date, recordMap);
     }).catchError((e) {
       debugPrint('[FB] updateTimeRecord: update failed, trying set...');
       _db.doc(_studyDoc).set({
         _timeRecordsField: {date: recordMap},
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
-      }, SetOptions(merge: true)).catchError((_) {});
+      }, SetOptions(merge: true)).then((_) {
+        _verifyWriteBack(date, recordMap);
+      }).catchError((e2) {
+        debugPrint('[FB] updateTimeRecord: set fallback also failed: $e2');
+      });
     });
     if (date == StudyDateUtils.todayKey()) {
       await updateTodayField('timeRecords', recordMap);
     }
+  }
+
+  /// B2: Write-back verify — 3초 후 서버에서 직접 읽어 검증
+  void _verifyWriteBack(String date, Map<String, dynamic> expected) {
+    Future.delayed(const Duration(seconds: 3), () async {
+      try {
+        final doc = await _db.doc(_studyDoc)
+            .get(const GetOptions(source: Source.server))
+            .timeout(const Duration(seconds: 5));
+        final data = doc.data();
+        if (data == null) return;
+        final serverRecords = data[_timeRecordsField];
+        if (serverRecords is! Map) return;
+        final serverRecord = serverRecords[date];
+        if (serverRecord == null) {
+          debugPrint('[FB] write-back verify: $date 서버에 없음 → 재시도');
+          _retryWrite(date, expected);
+          return;
+        }
+
+        // 핵심 필드만 비교
+        final serverMap = Map<String, dynamic>.from(serverRecord as Map);
+        bool mismatch = false;
+        for (final key in ['wake', 'study', 'studyEnd', 'outing', 'returnHome', 'bedTime']) {
+          if (expected[key] != serverMap[key]) {
+            mismatch = true;
+            debugPrint('[FB] write-back mismatch: $key expected=${expected[key]} server=${serverMap[key]}');
+          }
+        }
+
+        if (mismatch) {
+          debugPrint('[FB] write-back verify: 불일치 감지 → 재시도');
+          _retryWrite(date, expected);
+        } else {
+          debugPrint('[FB] write-back verify: OK');
+        }
+      } catch (e) {
+        debugPrint('[FB] write-back verify 실패 (무시): $e');
+      }
+    });
+  }
+
+  /// 조용한 재시도 1회
+  void _retryWrite(String date, Map<String, dynamic> recordMap) {
+    _db.doc(_studyDoc).update({
+      '$_timeRecordsField.$date': recordMap,
+      'lastModified': DateTime.now().millisecondsSinceEpoch,
+      'lastDevice': 'android',
+    }).then((_) {
+      debugPrint('[FB] retry write OK: $date');
+    }).catchError((e) {
+      debugPrint('[FB] retry write FAIL: $date — $e');
+    });
   }
 
   // ── studyTimeRecords ──
@@ -65,11 +134,14 @@ extension FirebaseStudyOps on FirebaseService {
       'lastModified': DateTime.now().millisecondsSinceEpoch,
       'lastDevice': 'android',
     }).catchError((e) {
+      debugPrint('[FB] updateStudyTimeRecord: update failed, trying set: $e');
       _db.doc(_studyDoc).set({
         _studyTimeRecordsField: {date: recordMap},
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
-        }, SetOptions(merge: true)).catchError((_) {});
+        }, SetOptions(merge: true)).catchError((e2) {
+          debugPrint('[FB] updateStudyTimeRecord: set fallback failed: $e2');
+        });
     });
     if (date == StudyDateUtils.todayKey()) {
       updateTodayField('studyTime.total', record.effectiveMinutes);
@@ -107,11 +179,14 @@ extension FirebaseStudyOps on FirebaseService {
       'lastModified': DateTime.now().millisecondsSinceEpoch,
       'lastDevice': 'android',
     }).catchError((e) {
+      debugPrint('[FB] saveFocusCycle: update failed, trying set: $e');
       _db.doc(_studyDoc).set({
         _focusCyclesField: {date: cyclesList},
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
-      }, SetOptions(merge: true)).catchError((_) {});
+      }, SetOptions(merge: true)).catchError((e2) {
+        debugPrint('[FB] saveFocusCycle: set fallback failed: $e2');
+      });
     });
     _cleanOldFocusCycles();
   }

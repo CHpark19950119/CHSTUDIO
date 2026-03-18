@@ -1,13 +1,21 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../models/creature_mood.dart';
 import 'firebase_service.dart';
 import 'local_cache_service.dart';
 
-class CreatureService {
+class CreatureService extends ChangeNotifier {
   static final CreatureService _i = CreatureService._();
   factory CreatureService() => _i;
   CreatureService._();
 
   Map<String, dynamic>? _cache;
+
+  // ── Mood ──
+  CreatureMood _mood = CreatureMood.neutral;
+  Timer? _moodResetTimer;
+
+  CreatureMood get mood => _mood;
 
   int maxExpForLevel(int level) => (100 * level * 1.3).toInt();
 
@@ -133,6 +141,19 @@ class CreatureService {
     final creature = await getCreature();
     creature['name'] = name;
     await _save(creature);
+  }
+
+  /// 무드 설정 — 일정 시간 후 neutral로 자동 복귀
+  void setMood(CreatureMood newMood, {Duration autoReset = const Duration(minutes: 30)}) {
+    _mood = newMood;
+    _moodResetTimer?.cancel();
+    if (newMood != CreatureMood.neutral) {
+      _moodResetTimer = Timer(autoReset, () {
+        _mood = CreatureMood.neutral;
+        notifyListeners();
+      });
+    }
+    notifyListeners();
   }
 
   void invalidateCache() => _cache = null;

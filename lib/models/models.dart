@@ -142,6 +142,78 @@ class TimeRecord {
     );
   }
 
+  // ═══════════════════════════════════════════
+  //  TimeRecord.validate() — 데이터 무결성 검증
+  // ═══════════════════════════════════════════
+
+  /// HH:mm 포맷 검증
+  static bool _isValidTime(String? t) {
+    if (t == null) return true; // null은 OK
+    final re = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
+    return re.hasMatch(t);
+  }
+
+  /// HH:mm → 분 변환 (null-safe)
+  static int? _toMinutes(String? t) {
+    if (t == null) return null;
+    if (!_isValidTime(t)) return null;
+    final p = t.split(':');
+    return int.parse(p[0]) * 60 + int.parse(p[1]);
+  }
+
+  /// 유효성 검증 결과
+  static TimeRecordValidation validate(TimeRecord tr) {
+    final errors = <String>[];
+
+    // 1. HH:mm 포맷 체크
+    if (!_isValidTime(tr.wake)) errors.add('wake 포맷 이상: ${tr.wake}');
+    if (!_isValidTime(tr.study)) errors.add('study 포맷 이상: ${tr.study}');
+    if (!_isValidTime(tr.studyEnd)) errors.add('studyEnd 포맷 이상: ${tr.studyEnd}');
+    if (!_isValidTime(tr.outing)) errors.add('outing 포맷 이상: ${tr.outing}');
+    if (!_isValidTime(tr.returnHome)) errors.add('returnHome 포맷 이상: ${tr.returnHome}');
+    if (!_isValidTime(tr.bedTime)) errors.add('bedTime 포맷 이상: ${tr.bedTime}');
+
+    // 2. 논리 순서 체크 (wake < study < studyEnd < bedTime)
+    //    자정 넘김을 감안하여 12시간 이내 차이만 역전으로 판단
+    final wakeM = _toMinutes(tr.wake);
+    final studyM = _toMinutes(tr.study);
+    final studyEndM = _toMinutes(tr.studyEnd);
+    final bedTimeM = _toMinutes(tr.bedTime);
+    final outingM = _toMinutes(tr.outing);
+    final returnM = _toMinutes(tr.returnHome);
+
+    if (wakeM != null && studyM != null) {
+      int diff = studyM - wakeM;
+      if (diff < 0) diff += 1440;
+      if (diff > 720) errors.add('study($studyM) < wake($wakeM)');
+    }
+    if (studyM != null && studyEndM != null) {
+      int diff = studyEndM - studyM;
+      if (diff < 0) diff += 1440;
+      if (diff > 720) errors.add('studyEnd < study');
+    }
+    if (outingM != null && returnM != null) {
+      int diff = returnM - outingM;
+      if (diff < 0) diff += 1440;
+      if (diff > 720) errors.add('returnHome < outing');
+    }
+    if (wakeM != null && outingM != null) {
+      int diff = outingM - wakeM;
+      if (diff < 0) diff += 1440;
+      if (diff > 720) errors.add('outing < wake');
+    }
+    if (studyEndM != null && bedTimeM != null) {
+      int diff = bedTimeM - studyEndM;
+      if (diff < 0) diff += 1440;
+      if (diff > 720) errors.add('bedTime < studyEnd');
+    }
+
+    return TimeRecordValidation(
+      isValid: errors.isEmpty,
+      errors: errors,
+    );
+  }
+
   /// 등교 이동시간 (분): 공부시작 - 외출
   int? get commuteToMinutes {
     if (outing == null || study == null) return null;
@@ -192,6 +264,15 @@ class TimeRecord {
       return null;
     }
   }
+}
+
+/// TimeRecord 유효성 검증 결과
+class TimeRecordValidation {
+  final bool isValid;
+  final List<String> errors;
+  const TimeRecordValidation({required this.isValid, required this.errors});
+  @override
+  String toString() => isValid ? 'OK' : 'INVALID: ${errors.join(', ')}';
 }
 
 // ─── 식사 기록 엔트리 (v9: 다회 식사) ───

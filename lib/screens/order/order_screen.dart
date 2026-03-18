@@ -58,8 +58,25 @@ class _OrderScreenState extends State<OrderScreen> {
     _safeSetState(() => _loading = false);
   }
 
+  bool _saving = false;
+  bool _savePending = false;
+
   Future<void> _save() async {
-    try { await _fb.updateField('orderData', _data.toMap()); } catch (_) {}
+    if (_saving) {
+      _savePending = true; // 큐잉: 현재 저장 끝나면 다시 저장
+      return;
+    }
+    _saving = true;
+    try {
+      await _fb.updateField('orderData', _data.toMap());
+    } catch (e) {
+      debugPrint('[Order] save error: $e');
+    }
+    _saving = false;
+    if (_savePending) {
+      _savePending = false;
+      _save(); // 대기 중이던 저장 실행
+    }
   }
 
   void _update(VoidCallback fn) {

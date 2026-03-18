@@ -5,6 +5,7 @@ import '../models/iot_models.dart';
 import '../models/models.dart';
 import 'door_sensor_service.dart';
 import 'day_service.dart';
+import 'safety_net_service.dart';
 
 /// 기상 감지 인터페이스
 abstract class WakeDetector {
@@ -70,7 +71,7 @@ class SensorWakeDetector implements WakeDetector {
     _lastWakeDate = today;
 
     debugPrint('[SensorWake] 문 열림 → 기상 (${now.hour}:${now.minute.toString().padLeft(2, '0')})');
-    WakeService().recordWake();
+    WakeService().recordWake(auto: true);
   }
 }
 
@@ -155,8 +156,15 @@ class WakeService {
       '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
 
   /// 기상 기록 — NfcService의 manualTestRole(wake) 위임
-  Future<void> recordWake() async {
+  /// auto=true: 센서 자동 기상 → 기록 후 사후 확인 알림
+  Future<void> recordWake({bool auto = false}) async {
     final result = await DayService().manualTestRole(ActionType.wake);
-    debugPrint('[WakeService] recordWake: $result');
+    debugPrint('[WakeService] recordWake(auto=$auto): $result');
+    if (auto) {
+      // 자동 기상 사후 확인: 기록은 이미 저장, 크리처가 확인 요청
+      Future.delayed(const Duration(seconds: 3), () {
+        SafetyNetService().triggerAutoWakeConfirm();
+      });
+    }
   }
 }

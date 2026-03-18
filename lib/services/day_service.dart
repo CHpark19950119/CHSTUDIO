@@ -115,6 +115,9 @@ class DayService extends ChangeNotifier {
   void forceState(DayState newState) => _routine.forceState(newState);
   void forceStudyState(bool value) => _routine.forceStudyState(value);
 
+  /// 외부 서비스에서 UI 갱신 트리거 (SafetyNet 등)
+  void notifyDataChanged() => notifyListeners();
+
   // ═══ 로깅 ═══
   void _log(String msg) {
     debugPrint('[Day] $msg');

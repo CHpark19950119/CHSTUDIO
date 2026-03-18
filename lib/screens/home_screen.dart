@@ -79,6 +79,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       return now.difference(wakeTime).inMinutes >= 180;
     } catch (_) { return false; }
   }
+
+  /// 칩거 모드 수동 토글
+  Future<void> _toggleHomeDay() async {
+    final newVal = !_noOuting;
+    _safeSetState(() => _noOuting = newVal);
+    try {
+      final fb = FirebaseService();
+      final todayKey = StudyDateUtils.todayKey();
+      final records = await fb.getTimeRecords().timeout(const Duration(seconds: 5));
+      final tr = records[todayKey];
+      if (tr != null) {
+        await fb.updateTimeRecord(todayKey, tr.copyWith(noOuting: newVal));
+      }
+    } catch (_) {}
+  }
   int _tab = 0;
   int _pendingTab = 0;
   double _tabFadeValue = 1.0;
@@ -1316,6 +1331,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Text('재택', style: BotanicalTypo.label(
               size: 9, color: _textMuted)),
           ]),
+        ),
+        const SizedBox(width: 8),
+        // 칩거 해제 버튼
+        GestureDetector(
+          onTap: _toggleHomeDay,
+          child: Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(
+              color: _textMuted.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8)),
+            child: Icon(Icons.close_rounded, size: 16, color: _textMuted),
+          ),
         ),
       ]),
     );

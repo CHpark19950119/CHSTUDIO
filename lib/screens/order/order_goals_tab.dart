@@ -214,93 +214,67 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
     final progress = total > 0 ? done / total : 0.0;
     final dDay = g.dDayLabel;
     final accentC = _goalAccent(g.daysLeft, index);
+    final pctText = total > 0 ? '${(progress * 100).round()}%' : '';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 6),
       child: GestureDetector(
         onTap: () => _showGoalDetail(g),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: accentC.withOpacity(0.08),
-              blurRadius: 16, offset: const Offset(0, 4))]),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
+            color: OC.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: OC.border.withOpacity(0.3))),
+          child: IntrinsicHeight(child: Row(children: [
+            // Left accent bar
+            Container(width: 3,
               decoration: BoxDecoration(
-                color: OC.card,
-                border: Border.all(color: OC.border.withOpacity(0.3))),
-              child: IntrinsicHeight(child: Row(children: [
-                // Left accent bar
-                Container(width: 4,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                      colors: [accentC, accentC.withOpacity(0.3)]))),
-                // Content
-                Expanded(child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Expanded(child: Text(g.title, style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w700, color: OC.text1,
-                        height: 1.3))),
-                      if (dDay.isNotEmpty) ...[
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              accentC.withOpacity(0.15), accentC.withOpacity(0.05)]),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: accentC.withOpacity(0.2))),
-                          child: Text(dDay, style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w900, color: accentC)),
-                        ),
-                      ],
-                    ]),
-                    if (total > 0) ...[
-                      const SizedBox(height: 12),
-                      // Segmented progress
-                      Row(children: List.generate(total, (i) {
-                        final isDone = g.milestones[i].done;
-                        return Expanded(child: Container(
-                          height: 4,
-                          margin: EdgeInsets.only(right: i < total - 1 ? 3 : 0),
-                          decoration: BoxDecoration(
-                            color: isDone ? accentC : OC.border.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(2)),
-                        ));
-                      })),
-                      const SizedBox(height: 6),
-                      Row(children: [
-                        Text('$done/$total 완료', style: const TextStyle(
-                          fontSize: 10, fontWeight: FontWeight.w600, color: OC.text3)),
-                        const Spacer(),
-                        if (g.deadline != null)
-                          Text(g.deadline!, style: const TextStyle(
-                            fontSize: 10, color: OC.text4)),
-                      ]),
-                    ] else if (g.deadline != null) ...[
-                      const SizedBox(height: 8),
-                      Row(children: [
-                        const Icon(Icons.calendar_today_rounded,
-                          size: 11, color: OC.text4),
-                        const SizedBox(width: 4),
-                        Text(g.deadline!, style: const TextStyle(
-                          fontSize: 11, color: OC.text3)),
-                      ]),
-                    ],
-                  ]),
-                )),
-                // Chevron
-                Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: Icon(Icons.chevron_right_rounded,
-                    size: 18, color: OC.text4.withOpacity(0.5))),
-              ])),
-            ),
-          ),
+                color: accentC,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(14),
+                  bottomLeft: Radius.circular(14)))),
+            // Content — 컴팩트 1줄
+            Expanded(child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                // 1행: 제목 + D-Day + %
+                Row(children: [
+                  Expanded(child: Text(g.title, style: const TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: OC.text1),
+                    maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  if (pctText.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(pctText, style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w800, color: accentC)),
+                  ],
+                  if (dDay.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: accentC.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6)),
+                      child: Text(dDay, style: TextStyle(
+                        fontSize: 10, fontWeight: FontWeight.w800, color: accentC)),
+                    ),
+                  ],
+                  const SizedBox(width: 4),
+                  Icon(Icons.chevron_right_rounded,
+                    size: 16, color: OC.text4.withOpacity(0.4)),
+                ]),
+                // 2행: 프로그레스 바
+                if (total > 0) ...[
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: progress, minHeight: 3,
+                      backgroundColor: OC.border.withOpacity(0.2),
+                      valueColor: AlwaysStoppedAnimation(accentC))),
+                ],
+              ]),
+            )),
+          ])),
         ),
       ),
     );

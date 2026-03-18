@@ -31,6 +31,16 @@ extension _HomeDailyLog on _HomeScreenState {
       if (_mealStart != null) events.add((time: _mealStart!, type: 'mealStart'));
       if (_mealEnd != null) events.add((time: _mealEnd!, type: 'mealEnd'));
     }
+    // ★ v11: 포커스 세션 이벤트 주입 (공부 vs 휴식 세분화)
+    for (int i = 0; i < _focusSessions.length; i++) {
+      final fc = _focusSessions[i];
+      if (fc.startTime.isNotEmpty) {
+        events.add((time: fc.startTime, type: 'focus_${i}_start'));
+      }
+      if (fc.endTime != null && fc.endTime!.isNotEmpty) {
+        events.add((time: fc.endTime!, type: 'focus_${i}_end'));
+      }
+    }
     if (_studyEnd != null) events.add((time: _studyEnd!, type: 'studyEnd'));
     if (_returnHome != null) events.add((time: _returnHome!, type: 'returnHome'));
     if (_bedTime != null) events.add((time: _bedTime!, type: 'bedTime'));
@@ -66,13 +76,14 @@ extension _HomeDailyLog on _HomeScreenState {
         case '이동': return const Color(0xFF3B8A6B);
         case '체류': return const Color(0xFF8B5CF6);
         case '공부': return const Color(0xFF6366F1);
+        case '휴식': return const Color(0xFF94A3B8);
         case '식사': return const Color(0xFFFF8A65);
         case '자유': return const Color(0xFF94A3B8);
         case '취침': return const Color(0xFF6B5DAF);
         default: return const Color(0xFF94A3B8);
       }
     }
-    
+
     String _emojiFor(String label) {
       switch (label) {
         case '준비': return '🌅';
@@ -80,6 +91,7 @@ extension _HomeDailyLog on _HomeScreenState {
         case '이동': return '🚶';
         case '체류': return '📍';
         case '공부': return '📖';
+        case '휴식': return '☕';
         case '식사': return '🍽️';
         case '자유': return '🏠';
         case '취침': return '🛏️';
@@ -117,30 +129,44 @@ extension _HomeDailyLog on _HomeScreenState {
           else if (nextType.isEmpty) {
             // 마지막 세그먼트 (현재까지) → NFC 상태 기반
             if (_nfc.isOut) { label = '이동'; }
-            else if (_nfc.isStudying) { label = '공부'; }
+            else if (_nfc.isStudying) { label = '휴식'; } // 포커스 없으면 휴식
             else if (_isHomeDay) { label = '재택'; }
             else { label = '자유'; }
+          } else if (nextType == 'studyStart' || nextType.startsWith('focus_')) {
+            label = _isHomeDay ? '재택' : '준비';
           } else if (_isHomeDay) { label = '재택'; }
           else { label = '자유'; }
           break;
         case 'outing': label = '이동'; break;
-        case 'studyStart': label = '공부'; break;
+        case 'studyStart':
+          // 공부시작 → 다음이 포커스면 휴식(대기), 아니면 휴식
+          label = nextType.startsWith('focus_') && nextType.endsWith('_start') ? '휴식' : '휴식';
+          break;
         case 'studyEnd':
-          // 공부종료 → 다음 이벤트까지 (귀가 전이면 이동, 아니면 자유)
           label = nextType == 'returnHome' ? '이동' : '자유';
           break;
         case 'mealStart': label = '식사'; break;
         case 'mealEnd':
-          // 식사종료 → 다음까지 (공부/자유 등)
-          label = nextType == 'studyEnd' || nextType == 'returnHome' ? '공부' : '자유';
+          // 식사종료 → 다음이 포커스면 휴식, 아니면 자유
+          label = nextType.startsWith('focus_') ? '휴식' :
+                  nextType == 'studyEnd' || nextType == 'returnHome' ? '휴식' : '자유';
           break;
         case 'returnHome': label = '자유'; break;
         case 'bedTime': label = '취침'; break;
         default:
-          // meal_N_start, meal_N_end 등
-          if (curr.type.endsWith('_start')) { label = '식사'; }
+          if (curr.type.startsWith('focus_') && curr.type.endsWith('_start')) {
+            // 포커스 시작 → 공부
+            label = '공부';
+          } else if (curr.type.startsWith('focus_') && curr.type.endsWith('_end')) {
+            // 포커스 종료 → 다음 포커스까지 휴식, 아니면 휴식/자유
+            label = nextType.startsWith('focus_') || nextType == 'studyEnd' ? '휴식' :
+                    nextType.startsWith('meal_') || nextType == 'mealStart' ? '식사' : '자유';
+          }
+          // meal_N_start, meal_N_end
+          else if (curr.type.endsWith('_start')) { label = '식사'; }
           else if (curr.type.endsWith('_end')) {
-            label = nextType.contains('study') || nextType.contains('meal') ? '공부' : '자유';
+            label = nextType.startsWith('focus_') ? '휴식' :
+                    nextType == 'studyEnd' ? '휴식' : '자유';
           }
           else { label = '자유'; }
       }
@@ -492,14 +518,14 @@ extension _HomeDailyLog on _HomeScreenState {
               }
               // 이동, 공부, 자유 순서로 표시
               final display = <MapEntry<String, int>>[];
-              for (final k in ['이동', '체류', '공부', '자유', '준비', '재택', '식사']) {
+              for (final k in ['공부', '휴식', '이동', '체류', '자유', '준비', '재택', '식사']) {
                 if (catMin.containsKey(k)) display.add(MapEntry(k, catMin[k]!));
               }
               if (display.isEmpty) return <Widget>[];
               return display.asMap().entries.map((entry) {
                 final e = entry.value;
                 final isLast = entry.key == display.length - 1;
-                final emoji = e.key == '이동' ? '🚶' : e.key == '체류' ? '📍' : e.key == '공부' ? '📖' : e.key == '자유' ? '🏠' : e.key == '준비' ? '🌅' : e.key == '재택' ? '🏠' : '🍽️';
+                final emoji = e.key == '공부' ? '📖' : e.key == '휴식' ? '☕' : e.key == '이동' ? '🚶' : e.key == '체류' ? '📍' : e.key == '자유' ? '🏠' : e.key == '준비' ? '🌅' : e.key == '재택' ? '🏠' : e.key == '식사' ? '🍽️' : '📍';
                 final h = e.value ~/ 60; final m = e.value % 60;
                 final timeStr = h > 0 ? '${h}h${m > 0 ? " ${m}m" : ""}' : '${m}m';
                 return Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [

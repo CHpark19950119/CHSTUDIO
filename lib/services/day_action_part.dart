@@ -116,6 +116,9 @@ extension _DayActionHandlers on DayService {
         _notifyNative(title: '외출', body: '외출 $tgTime');
         _emitAction('outing_start', '🚪', '외출 $tgTime$loc');
         SafetyNetService().clearAlert(SafetyCheck.outingMiss);
+
+        // 습관 자동 트리거 (outing)
+        _autoTriggerHabits('outing', dateStr);
       }
     } catch (e) {
       _log('Outing 에러: $e');
@@ -179,6 +182,9 @@ extension _DayActionHandlers on DayService {
       _notifyNative(title: '공부 시작', body: '공부 시작 $tgTime');
       _emitAction('study_start', '📚', '공부시작 $tgTime');
       _triggerWidgetUpdate();
+
+      // 습관 자동 트리거 (study)
+      _autoTriggerHabits('study', dateStr);
     } catch (e) {
       _log('Study 에러: $e');
     }
@@ -203,6 +209,9 @@ extension _DayActionHandlers on DayService {
         _notifyNative(title: '식사 시작', body: '식사 시작 $tgTime (${meals.length}번째)');
         _emitAction('meal_start', '🍽️', '식사 시작 $tgTime');
         SafetyNetService().clearAlert(SafetyCheck.mealMiss);
+
+        // 습관 자동 트리거 (meal)
+        _autoTriggerHabits('meal', dateStr);
       } else {
         _meal.endMeal();
         final openIdx = meals.lastIndexWhere((m) => m.end == null);
@@ -306,6 +315,7 @@ extension _DayActionHandlers on DayService {
   }
 
   /// 습관 자동 트리거 — wake/sleep 이벤트 시 매칭 습관 자동 완료
+  /// 이벤트 기반 습관 자동 트리거 (triggerTime 없는 즉시 트리거만)
   Future<void> _autoTriggerHabits(String trigger, String dateStr) async {
     try {
       final fb = FirebaseService();
@@ -318,6 +328,7 @@ extension _DayActionHandlers on DayService {
       for (final h in orderData.habits) {
         if (h.archived || h.isSettled) continue;
         if (h.autoTrigger != trigger) continue;
+        if (h.triggerTime != null) continue; // 시간 기반은 SafetyNet에서 처리
         if (h.isDoneOn(dateStr)) continue;
         h.toggleDate(dateStr);
         changed = true;

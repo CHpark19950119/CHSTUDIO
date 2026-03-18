@@ -16,6 +16,7 @@ import 'services/wake_service.dart';
 import 'services/widget_render_service.dart';
 import 'services/fcm_service.dart';
 import 'services/safety_net_service.dart';
+import 'services/data_audit_service.dart';
 
 class AppInit {
   static Future<void> run() async {
@@ -62,10 +63,15 @@ class AppInit {
     // ── Phase 4c: 안전망 서비스 ──
     SafetyNetService().init().timeout(const Duration(seconds: 5)).catchError((_) {});
 
-    // ── Phase 5: 주간 리포트 자동 체크 (일요일) ──
+    // ── Phase 5: 데이터 감사 (1일 1회, 비블로킹) ──
+    DataAuditService().runIfNeeded().catchError((e) {
+      debugPrint('[AppInit] data audit error: $e');
+    });
+
+    // ── Phase 6: 주간 리포트 자동 체크 (일요일) ──
     ReportService().checkWeeklyReport().catchError((_) {});
 
-    // ── Phase 6: 홈 위젯 업데이트 ──
+    // ── Phase 7: 홈 위젯 업데이트 ──
     WidgetRenderService().updateWidget().catchError((_) {});
   }
 }

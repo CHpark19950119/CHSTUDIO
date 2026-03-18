@@ -25,12 +25,15 @@ class _ProgressScreenState extends State<ProgressScreen>
   List<ProgressGoal> _goals = [];
   bool _loading = true;
   String _typeFilter = 'all'; // all, lecture, textbook
-  String _roundFilter = 'all'; // all, 1차, 2차
   final Set<String> _expandedGroups = {}; // 펼쳐진 그룹 ID 추적
   bool _initialGroupsSet = false;
   StreamSubscription? _progressSub; // UL-4: 실시간 스트림
   int _retryDelay = 5; // 지수 백오프 (초)
   bool _completedExpanded = false; // 완료 섹션 접기/펼치기
+
+  // ─── 1차/2차 탭 ───
+  late TabController _roundTabCtrl;
+  String get _roundFilter => ['all', '1차', '2차'][_roundTabCtrl.index];
 
   // ─── Stagger entrance animation ───
   late AnimationController _staggerCtrl;
@@ -65,6 +68,10 @@ class _ProgressScreenState extends State<ProgressScreen>
   @override
   void initState() {
     super.initState();
+    _roundTabCtrl = TabController(length: 3, vsync: this);
+    _roundTabCtrl.addListener(() {
+      if (!_roundTabCtrl.indexIsChanging) _safeSetState(() {});
+    });
     _staggerCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200));
     for (int i = 0; i < _cardCount; i++) {
@@ -85,6 +92,7 @@ class _ProgressScreenState extends State<ProgressScreen>
 
   @override
   void dispose() {
+    _roundTabCtrl.dispose();
     _staggerCtrl.dispose();
     _progressSub?.cancel(); // UL-4
     super.dispose();
@@ -461,27 +469,25 @@ class _ProgressScreenState extends State<ProgressScreen>
                 slivers: [
                   // ─── 헤더 ───
                   SliverToBoxAdapter(child: _staggered(0, _buildHeader(isDark))),
-                  // ─── 전체 강의 리스트 ───
-                  if (_allLectureGoals.isNotEmpty)
+                  // ─── 전체 강의 리스트 (전체 탭에서만) ───
+                  if (_allLectureGoals.isNotEmpty && _roundFilter == 'all')
                     SliverToBoxAdapter(
                         child: _staggered(1, _buildAllLecturesList(isDark))),
-                  // ─── 과목별 요약 ───
-                  if (_activeGoals.isNotEmpty)
+                  // ─── 과목별 요약 (전체 탭에서만) ───
+                  if (_activeGoals.isNotEmpty && _roundFilter == 'all')
                     SliverToBoxAdapter(
                         child: _staggered(2, _buildSubjectSummary(isDark))),
-                  // ─── 라운드 필터 (1차/2차) ───
-                  SliverToBoxAdapter(child: _staggered(3, _buildRoundFilter(isDark))),
                   // ─── 타입 필터 ───
-                  SliverToBoxAdapter(child: _staggered(4, _buildTypeFilter(isDark))),
+                  SliverToBoxAdapter(child: _staggered(3, _buildTypeFilter(isDark))),
                   // ─── 목표 목록 (그룹핑) ───
                   if (_filteredActive.isEmpty)
-                    SliverToBoxAdapter(child: _staggered(5, _buildEmptyState(isDark))),
+                    SliverToBoxAdapter(child: _staggered(4, _buildEmptyState(isDark))),
                   if (_filteredActive.isNotEmpty)
                     ..._buildGroupedGoals(isDark),
                   // ─── 완료 섹션 ───
                   if (_completedGoals.isNotEmpty)
                     SliverToBoxAdapter(
-                        child: _staggered(6, _buildCompletedSection(isDark))),
+                        child: _staggered(5, _buildCompletedSection(isDark))),
                   const SliverToBoxAdapter(child: SizedBox(height: 100)),
                 ],
               ),
@@ -632,8 +638,8 @@ class _ProgressScreenState extends State<ProgressScreen>
             ],
           ),
           const SizedBox(height: 14),
-          // 1차/2차 요약 카드
-          if (totalActive > 0) _buildRoundSummary(isDark),
+          // 1차/2차 탭 바
+          if (totalActive > 0) _buildRoundTabBar(isDark),
         ],
       ),
     );
@@ -654,110 +660,138 @@ class _ProgressScreenState extends State<ProgressScreen>
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  1차/2차 라운드 요약 카드
+  //  1차/2차 탭 바 + 라운드별 요약 카드
   // ═══════════════════════════════════════════════════════════
 
-  Widget _buildRoundSummary(bool isDark) {
+  static const _r1Color = Color(0xFF3B6BA5);
+  static const _r2Color = Color(0xFF7A5195);
+
+  Widget _buildRoundTabBar(bool isDark) {
     final r1 = _activeGoals.where((g) => SubjectConfig.examRound(g.subject) == '1차').toList();
     final r2 = _activeGoals.where((g) => SubjectConfig.examRound(g.subject) == '2차').toList();
     final r1Pct = r1.isEmpty ? 0.0 : r1.fold<double>(0, (s, g) => s + g.progressPercent) / r1.length;
     final r2Pct = r2.isEmpty ? 0.0 : r2.fold<double>(0, (s, g) => s + g.progressPercent) / r2.length;
-    final divider = Container(width: 1, height: 36,
-      color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200);
 
-    return _glass(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      child: Row(children: [
-        // 1차
-        Expanded(child: GestureDetector(
-          onTap: () => _safeSetState(() => _roundFilter = _roundFilter == '1차' ? 'all' : '1차'),
-          child: _roundCard('1차 PSAT', r1Pct, r1.length,
-            const Color(0xFF3B6BA5), _roundFilter == '1차', isDark),
-        )),
-        const SizedBox(width: 8),
-        divider,
-        const SizedBox(width: 8),
-        // 2차
-        Expanded(child: GestureDetector(
-          onTap: () => _safeSetState(() => _roundFilter = _roundFilter == '2차' ? 'all' : '2차'),
-          child: _roundCard('2차 전공', r2Pct, r2.length,
-            const Color(0xFF7A5195), _roundFilter == '2차', isDark),
-        )),
-      ]),
-    );
-  }
-
-  Widget _roundCard(String label, double pct, int count, Color color, bool selected, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: selected ? color.withOpacity(isDark ? 0.15 : 0.08) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: selected ? Border.all(color: color.withOpacity(0.3)) : null),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(width: 8, height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-            color: selected ? color : (isDark ? Colors.white70 : Colors.grey.shade700))),
-        ]),
-        const SizedBox(height: 6),
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('${pct.round()}', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: color)),
-          Text('%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-            color: color.withOpacity(0.7))),
-          const Spacer(),
-          Text('${count}개', style: TextStyle(fontSize: 11,
-            color: isDark ? Colors.white38 : Colors.grey.shade500)),
-        ]),
-        const SizedBox(height: 4),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(3),
-          child: LinearProgressIndicator(
-            value: (pct / 100).clamp(0, 1),
-            minHeight: 4,
-            backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200,
-            valueColor: AlwaysStoppedAnimation(color))),
-      ]),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  라운드 필터 (1차/2차/전체)
-  // ═══════════════════════════════════════════════════════════
-
-  Widget _buildRoundFilter(bool isDark) {
-    final r1Count = _activeGoals.where((g) => SubjectConfig.examRound(g.subject) == '1차').length;
-    final r2Count = _activeGoals.where((g) => SubjectConfig.examRound(g.subject) == '2차').length;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Row(children: [
-        _roundChip('전체 ${_activeGoals.length}', 'all', _indigo(isDark), isDark),
-        const SizedBox(width: 8),
-        _roundChip('1차 PSAT $r1Count', '1차', const Color(0xFF3B6BA5), isDark),
-        const SizedBox(width: 8),
-        _roundChip('2차 전공 $r2Count', '2차', const Color(0xFF7A5195), isDark),
-      ]),
-    );
-  }
-
-  Widget _roundChip(String label, String round, Color color, bool isDark) {
-    final selected = _roundFilter == round;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _safeSetState(() => _roundFilter = round),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          decoration: BoxDecoration(
-            color: selected ? color : (isDark ? Colors.white.withOpacity(0.05) : Colors.white.withOpacity(0.7)),
+    return Column(children: [
+      // 탭 바
+      _glass(
+        padding: const EdgeInsets.all(4),
+        radius: 14,
+        child: TabBar(
+          controller: _roundTabCtrl,
+          indicator: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.1) : Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: selected ? color : (isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade300))),
-          child: Center(child: Text(label,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : Colors.grey.shade600))),
+            boxShadow: isDark ? null : [
+              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4, offset: const Offset(0, 2)),
+            ],
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          dividerHeight: 0,
+          labelPadding: EdgeInsets.zero,
+          labelColor: isDark ? Colors.white : const Color(0xFF1E293B),
+          unselectedLabelColor: isDark ? Colors.white38 : Colors.grey.shade500,
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+          unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          tabs: [
+            Tab(height: 36, child: Text('전체 ${_activeGoals.length}')),
+            Tab(height: 36, child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 6, height: 6,
+                decoration: const BoxDecoration(color: _r1Color, shape: BoxShape.circle)),
+              const SizedBox(width: 4),
+              Text('1차 ${r1.length}'),
+            ])),
+            Tab(height: 36, child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 6, height: 6,
+                decoration: const BoxDecoration(color: _r2Color, shape: BoxShape.circle)),
+              const SizedBox(width: 4),
+              Text('2차 ${r2.length}'),
+            ])),
+          ],
         ),
       ),
+      // 라운드 선택 시 요약 카드
+      if (_roundTabCtrl.index > 0) ...[
+        const SizedBox(height: 10),
+        _roundSummaryCard(
+          _roundTabCtrl.index == 1 ? '1차 PSAT' : '2차 전공',
+          _roundTabCtrl.index == 1 ? r1Pct : r2Pct,
+          _roundTabCtrl.index == 1 ? r1 : r2,
+          _roundTabCtrl.index == 1 ? _r1Color : _r2Color,
+          isDark,
+        ),
+      ],
+    ]);
+  }
+
+  Widget _roundSummaryCard(String label, double pct, List<ProgressGoal> goals,
+      Color color, bool isDark) {
+    // 과목별 분해
+    final subjMap = <String, List<ProgressGoal>>{};
+    for (final g in goals) {
+      subjMap.putIfAbsent(g.subject, () => []).add(g);
+    }
+
+    return _glass(
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // 헤더: 라벨 + 전체 %
+        Row(children: [
+          Container(width: 10, height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 8),
+          Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : const Color(0xFF1E293B))),
+          const Spacer(),
+          Text('${pct.round()}%', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color)),
+        ]),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: (pct / 100).clamp(0, 1), minHeight: 6,
+            backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200,
+            valueColor: AlwaysStoppedAnimation(color))),
+        const SizedBox(height: 12),
+        // 과목별 미니 카드
+        Wrap(spacing: 8, runSpacing: 8, children: subjMap.entries.map((e) {
+          final cfg = _cfgFor(e.key);
+          final subjPct = e.value.fold<double>(0, (s, g) => s + g.progressPercent) / e.value.length;
+          final subjColor = Color(cfg.color);
+          return Container(
+            width: (MediaQuery.of(context).size.width - 80) / 2,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.04) : subjColor.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: subjColor.withOpacity(0.15))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Text(cfg.emoji, style: const TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+                Expanded(child: Text(e.key, style: TextStyle(fontSize: 11,
+                  fontWeight: FontWeight.w700, color: subjColor),
+                  overflow: TextOverflow.ellipsis)),
+              ]),
+              const SizedBox(height: 4),
+              Row(children: [
+                Text('${subjPct.round()}%', style: TextStyle(fontSize: 16,
+                  fontWeight: FontWeight.w800, color: subjColor)),
+                const Spacer(),
+                Text('${e.value.length}개', style: TextStyle(fontSize: 10,
+                  color: isDark ? Colors.white38 : Colors.grey.shade500)),
+              ]),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: (subjPct / 100).clamp(0, 1), minHeight: 3,
+                  backgroundColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation(subjColor))),
+            ]),
+          );
+        }).toList()),
+      ]),
     );
   }
 

@@ -146,8 +146,14 @@ class OrderHabitsTab extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(focus.title, style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w800, color: OC.text1)),
+                Row(children: [
+                  Flexible(child: Text(focus.title, style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w800, color: OC.text1))),
+                  if (focus.autoTrigger != null) ...[
+                    const SizedBox(width: 6),
+                    _autoTriggerBadge(focus),
+                  ],
+                ]),
                 const SizedBox(height: 2),
                 Text('${focus.growthEmoji} ${focus.growthLabel} · '
                     '목표 ${focus.targetDays}일',
@@ -398,6 +404,10 @@ class OrderHabitsTab extends StatelessWidget {
                       fontSize: 8, fontWeight: FontWeight.w800,
                       color: Color(0xFF94A3B8))),
                   ),
+                  if (h.autoTrigger != null) ...[
+                    const SizedBox(width: 4),
+                    _autoTriggerBadge(h),
+                  ],
                 ]),
                 Text('🔥 ${h.currentStreak}일 · ${h.growthEmoji} ${h.growthLabel}',
                   style: const TextStyle(fontSize: 11, color: OC.text3)),
@@ -505,8 +515,8 @@ class OrderHabitsTab extends StatelessWidget {
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text(h.title, style: const TextStyle(fontSize: 13,
-                  fontWeight: FontWeight.w700, color: OC.text1)),
+                Flexible(child: Text(h.title, style: const TextStyle(fontSize: 13,
+                  fontWeight: FontWeight.w700, color: OC.text1))),
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -518,6 +528,10 @@ class OrderHabitsTab extends StatelessWidget {
                     fontSize: 9, fontWeight: FontWeight.w700,
                     color: OC.success)),
                 ),
+                if (h.autoTrigger != null) ...[
+                  const SizedBox(width: 4),
+                  _autoTriggerBadge(h),
+                ],
               ]),
               Text('🔥 ${h.currentStreak}일 유지 중',
                 style: const TextStyle(fontSize: 11, color: OC.text3)),
@@ -595,9 +609,16 @@ class OrderHabitsTab extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(child: Column(
             crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(h.title, style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w700,
-                color: OC.text1)),
+              Row(children: [
+                Flexible(child: Text(h.title, style: const TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: OC.text1), maxLines: 1,
+                  overflow: TextOverflow.ellipsis)),
+                if (h.autoTrigger != null) ...[
+                  const SizedBox(width: 6),
+                  _autoTriggerBadge(h),
+                ],
+              ]),
               Row(children: [
                 Text('${h.growthEmoji} ${h.growthLabel}',
                   style: const TextStyle(fontSize: 11, color: OC.text3)),
@@ -880,6 +901,30 @@ class OrderHabitsTab extends StatelessWidget {
     );
   }
 
+  // ═══════════════════════════════════════════════════
+  //  autoTrigger 뱃지 (카드에 표시)
+  // ═══════════════════════════════════════════════════
+
+  static const _triggerLabels = {
+    'wake': '☀️기상', 'sleep': '🌙취침', 'study': '📚공부',
+    'outing': '🚪외출', 'meal': '🍽️식사',
+  };
+
+  Widget _autoTriggerBadge(OrderHabit h) {
+    if (h.autoTrigger == null) return const SizedBox.shrink();
+    final label = _triggerLabels[h.autoTrigger] ?? h.autoTrigger!;
+    final timeStr = h.triggerTime != null ? ' ${h.triggerTime}' : '';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6366F1).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6)),
+      child: Text('⚡$label$timeStr', style: const TextStyle(
+        fontSize: 9, fontWeight: FontWeight.w700,
+        color: Color(0xFF6366F1))),
+    );
+  }
+
   Widget _triggerChip(BuildContext ctx, StateSetter setS,
       String label, String? value, String? current,
       void Function(String?) onChanged) {
@@ -921,6 +966,7 @@ class OrderHabitsTab extends StatelessWidget {
     // ★ v5: 집중 슬롯 3개 미만이면 기본 rank=1
     var rank = editing?.rank ?? (data.focusHabits.length < 3 ? 1 : 0);
     String? autoTrigger = editing?.autoTrigger;
+    String? triggerTime = editing?.triggerTime;
 
     final targetOptions = [7, 14, 21, 30, 66];
 
@@ -1042,9 +1088,10 @@ class OrderHabitsTab extends StatelessWidget {
                 child: Text('자동 완료', style: TextStyle(fontSize: 12,
                   fontWeight: FontWeight.w600, color: OC.text2))),
               const SizedBox(height: 6),
+              // 1행: 수동 / 기상 / 취침
               Row(children: [
                 _triggerChip(ctx, setS, '수동', null, autoTrigger,
-                  (v) => setS(() => autoTrigger = v)),
+                  (v) => setS(() { autoTrigger = v; triggerTime = null; })),
                 const SizedBox(width: 8),
                 _triggerChip(ctx, setS, '☀️ 기상', 'wake', autoTrigger,
                   (v) => setS(() => autoTrigger = v)),
@@ -1052,6 +1099,73 @@ class OrderHabitsTab extends StatelessWidget {
                 _triggerChip(ctx, setS, '🌙 취침', 'sleep', autoTrigger,
                   (v) => setS(() => autoTrigger = v)),
               ]),
+              const SizedBox(height: 8),
+              // 2행: 공부 / 외출 / 식사
+              Row(children: [
+                _triggerChip(ctx, setS, '📚 공부', 'study', autoTrigger,
+                  (v) => setS(() => autoTrigger = v)),
+                const SizedBox(width: 8),
+                _triggerChip(ctx, setS, '🚪 외출', 'outing', autoTrigger,
+                  (v) => setS(() => autoTrigger = v)),
+                const SizedBox(width: 8),
+                _triggerChip(ctx, setS, '🍽️ 식사', 'meal', autoTrigger,
+                  (v) => setS(() => autoTrigger = v)),
+              ]),
+              // ★ 조건부 시간 (autoTrigger 설정 시만)
+              if (autoTrigger != null) ...[
+                const SizedBox(height: 12),
+                Row(children: [
+                  const Text('조건 확인 시간', style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w600, color: OC.text2)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () async {
+                      final init = triggerTime != null
+                          ? TimeOfDay(
+                              hour: int.parse(triggerTime!.split(':')[0]),
+                              minute: int.parse(triggerTime!.split(':')[1]))
+                          : const TimeOfDay(hour: 22, minute: 0);
+                      final picked = await showTimePicker(
+                        context: ctx, initialTime: init);
+                      if (picked != null) {
+                        setS(() => triggerTime =
+                          '${picked.hour.toString().padLeft(2, '0')}:'
+                          '${picked.minute.toString().padLeft(2, '0')}');
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: triggerTime != null
+                            ? const Color(0xFF6366F1).withOpacity(0.12)
+                            : OC.cardHi,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: triggerTime != null
+                            ? const Color(0xFF6366F1) : OC.border)),
+                      child: Text(
+                        triggerTime ?? '즉시 (이벤트)',
+                        style: TextStyle(fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: triggerTime != null
+                              ? const Color(0xFF6366F1) : OC.text3)),
+                    ),
+                  ),
+                  if (triggerTime != null) ...[
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () => setS(() => triggerTime = null),
+                      child: const Icon(Icons.close_rounded,
+                        size: 18, color: OC.text3)),
+                  ],
+                ]),
+                const SizedBox(height: 4),
+                Text(
+                  triggerTime != null
+                    ? '$triggerTime에 ${_triggerLabels[autoTrigger] ?? autoTrigger!} 했으면 자동 완료'
+                    : '${_triggerLabels[autoTrigger] ?? autoTrigger!} 하는 즉시 자동 완료',
+                  style: const TextStyle(fontSize: 10, color: OC.text4)),
+              ],
 
               const SizedBox(height: 16),
               Row(children: [
@@ -1083,6 +1197,7 @@ class OrderHabitsTab extends StatelessWidget {
                         }
                         editing.rank = rank;
                         editing.autoTrigger = autoTrigger;
+                        editing.triggerTime = triggerTime;
                       } else {
                         // ★ v5: 집중 3개 제한
                         if (rank == 1 && data.focusHabits.length >= 3) {
@@ -1096,6 +1211,7 @@ class OrderHabitsTab extends StatelessWidget {
                           targetDays: targetDays,
                           rank: rank,
                           autoTrigger: autoTrigger,
+                          triggerTime: triggerTime,
                         ));
                       }
                     });

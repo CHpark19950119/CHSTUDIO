@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/creature_mood.dart';
 
 /// SafetyNet 알림 시 크리쳐가 나타나는 풀스크린 오버레이
 class CreatureAlertOverlay extends StatefulWidget {
@@ -10,6 +11,7 @@ class CreatureAlertOverlay extends StatefulWidget {
   final String? dismissLabel;
   final VoidCallback? onConfirm;
   final VoidCallback? onDismiss;
+  final CreatureMood mood;
 
   const CreatureAlertOverlay({
     super.key,
@@ -19,6 +21,7 @@ class CreatureAlertOverlay extends StatefulWidget {
     this.dismissLabel = '아니야',
     this.onConfirm,
     this.onDismiss,
+    this.mood = CreatureMood.neutral,
   });
 
   /// 글로벌 네비게이터로 오버레이 표시
@@ -30,6 +33,7 @@ class CreatureAlertOverlay extends StatefulWidget {
     String? dismissLabel,
     VoidCallback? onConfirm,
     VoidCallback? onDismiss,
+    CreatureMood mood = CreatureMood.neutral,
   }) {
     HapticFeedback.heavyImpact();
     return showDialog(
@@ -43,6 +47,7 @@ class CreatureAlertOverlay extends StatefulWidget {
         dismissLabel: dismissLabel,
         onConfirm: onConfirm,
         onDismiss: onDismiss,
+        mood: mood,
       ),
     );
   }
@@ -92,8 +97,19 @@ class _CreatureAlertOverlayState extends State<CreatureAlertOverlay>
     Navigator.of(context).pop();
   }
 
+  Color _moodColor() {
+    switch (widget.mood) {
+      case CreatureMood.worried: return const Color(0xFFF59E0B); // amber
+      case CreatureMood.curious: return const Color(0xFF06B6D4); // cyan
+      case CreatureMood.proud: return const Color(0xFF10B981);   // green
+      case CreatureMood.sleepy: return const Color(0xFF8B5CF6);  // purple
+      case CreatureMood.neutral: return const Color(0xFF6366F1); // indigo
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final accentColor = _moodColor();
     return FadeTransition(
       opacity: _fadeAnim,
       child: Center(
@@ -106,16 +122,16 @@ class _CreatureAlertOverlayState extends State<CreatureAlertOverlay>
               color: const Color(0xFF1A1A2E),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: const Color(0xFF6366F1).withOpacity(0.4), width: 2),
+                color: accentColor.withOpacity(0.4), width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6366F1).withOpacity(0.3),
+                  color: accentColor.withOpacity(0.3),
                   blurRadius: 40, spreadRadius: 4),
               ],
             ),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               // 크리쳐 이미지
-              _CreatureAvatar(),
+              _CreatureAvatar(accentColor: accentColor),
               const SizedBox(height: 16),
               // 말풍선
               Container(
@@ -151,7 +167,7 @@ class _CreatureAlertOverlayState extends State<CreatureAlertOverlay>
                 if (widget.confirmLabel != null) Expanded(
                   child: _AlertBtn(
                     label: widget.confirmLabel!,
-                    color: const Color(0xFF6366F1),
+                    color: accentColor,
                     textColor: Colors.white,
                     onTap: _handleConfirm)),
               ]),
@@ -194,6 +210,8 @@ class _AlertBtn extends StatelessWidget {
 
 /// 크리쳐 아바타 — sprite sheet 첫 프레임 + 호흡 애니메이션
 class _CreatureAvatar extends StatefulWidget {
+  final Color accentColor;
+  const _CreatureAvatar({this.accentColor = const Color(0xFF6366F1)});
   @override
   State<_CreatureAvatar> createState() => _CreatureAvatarState();
 }
@@ -233,7 +251,7 @@ class _CreatureAvatarState extends State<_CreatureAvatar>
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              const Color(0xFF6366F1).withOpacity(0.2),
+              widget.accentColor.withOpacity(0.2),
               Colors.transparent]),
         ),
         child: Center(

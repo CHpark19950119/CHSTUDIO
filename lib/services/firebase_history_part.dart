@@ -37,7 +37,9 @@ extension FirebaseHistoryOps on FirebaseService {
         field: value,
         'lastModified': DateTime.now().millisecondsSinceEpoch,
         'lastDevice': 'android',
-      }, SetOptions(merge: true)).catchError((_) {});
+      }, SetOptions(merge: true)).catchError((e2) {
+        debugPrint('[FB] updateTodayField set fallback failed: $field — $e2');
+      });
     });
   }
 
@@ -374,19 +376,35 @@ extension FirebaseHistoryOps on FirebaseService {
     return !isRest;
   }
 
-  // ── 4AM Rollover ──
+  // ── 4AM Rollover (중복 방지 포함) ──
+
+  static bool _rollingOver = false;
 
   Future<void> checkDayRollover() async {
+    if (_rollingOver) {
+      debugPrint('[Rollover] 이미 진행 중 — 스킵');
+      return;
+    }
+    _rollingOver = true;
     try {
       final todayData = await getTodayDoc();
-      if (todayData == null) return;
+      if (todayData == null) { _rollingOver = false; return; }
 
       final savedDate = todayData['date'] as String?;
       final currentDate = StudyDateUtils.todayKey();
 
-      if (savedDate == null || savedDate == currentDate) return;
+      if (savedDate == null || savedDate == currentDate) {
+        _rollingOver = false;
+        return;
+      }
 
       debugPrint('[Rollover] $savedDate -> $currentDate archiving...');
+
+      // ★ 아카이빙 전 today doc을 새 날짜로 먼저 마킹 (중복 방지)
+      await _db.doc(_todayDoc2).update({
+        'date': currentDate,
+        '_rolloverInProgress': true,
+      }).timeout(const Duration(seconds: 5));
 
       await appendDayToHistory(savedDate, todayData);
       final month = savedDate.substring(0, 7);
@@ -407,5 +425,6 @@ extension FirebaseHistoryOps on FirebaseService {
     } catch (e) {
       debugPrint('[Rollover] error: $e');
     }
+    _rollingOver = false;
   }
 }

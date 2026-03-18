@@ -179,8 +179,11 @@ class OrderHabit {
   /// ★ v5: 연속일 이력
   List<StreakRecord> streakHistory;
 
-  /// ★ v6: 자동 트리거 ('wake', 'sleep', null)
+  /// ★ v6: 자동 트리거 ('wake', 'sleep', 'study', 'outing', 'meal', null)
   String? autoTrigger;
+
+  /// ★ v7: 조건부 시간 — 이 시간에 조건 충족 시 자동 완료 (HH:mm)
+  String? triggerTime;
 
   OrderHabit({
     required this.id, required this.title, this.emoji = '✅',
@@ -188,7 +191,7 @@ class OrderHabit {
     List<String>? completedDates, this.nfcTagId,
     String? createdAt, this.archived = false,
     this.rank = 0, this.targetDays = 21, this.settledAt,
-    List<StreakRecord>? streakHistory, this.autoTrigger,
+    List<StreakRecord>? streakHistory, this.autoTrigger, this.triggerTime,
   })  : completedDates = completedDates ?? [],
         streakHistory = streakHistory ?? [],
         createdAt = createdAt ?? DateTime.now().toIso8601String();
@@ -371,6 +374,7 @@ class OrderHabit {
             ?.map((e) => StreakRecord.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList() ?? [],
         autoTrigger: m['autoTrigger'] as String?,
+        triggerTime: m['triggerTime'] as String?,
       );
     // 마이그레이션: streakHistory가 비어있으면 자동 계산
     if (habit.streakHistory.isEmpty && habit.completedDates.length > 1) {
@@ -389,6 +393,7 @@ class OrderHabit {
         if (settledAt != null) 'settledAt': settledAt,
         'streakHistory': streakHistory.map((r) => r.toMap()).toList(),
         if (autoTrigger != null) 'autoTrigger': autoTrigger,
+        if (triggerTime != null) 'triggerTime': triggerTime,
       };
 }
 
