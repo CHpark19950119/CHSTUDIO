@@ -28,19 +28,7 @@ extension FirebaseHistoryOps on FirebaseService {
     final localData = LocalCacheService().getGeneric('today') ?? {};
     _setNestedValue(localData, field, value);
     await LocalCacheService().saveGeneric('today', localData);
-    _db.doc(_todayDoc2).update({
-      field: value,
-      'lastModified': DateTime.now().millisecondsSinceEpoch,
-      'lastDevice': 'android',
-    }).catchError((e) {
-      _db.doc(_todayDoc2).set({
-        field: value,
-        'lastModified': DateTime.now().millisecondsSinceEpoch,
-        'lastDevice': 'android',
-      }, SetOptions(merge: true)).catchError((e2) {
-        debugPrint('[FB] updateTodayField set fallback failed: $field — $e2');
-      });
-    });
+    FirestoreWriteQueue().enqueue(_todayDoc2, {field: value});
   }
 
   Future<void> _setTodayDoc(Map<String, dynamic> data) async {

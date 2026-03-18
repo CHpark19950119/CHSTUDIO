@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../models/plan_models.dart';
 import '../utils/study_date_utils.dart';
 import 'local_cache_service.dart';
+import 'write_queue_service.dart';
 
 part 'firebase_study_part.dart';
 part 'firebase_history_part.dart';
@@ -267,19 +268,7 @@ class FirebaseService {
     }
     _studyCacheTime = DateTime.now();
     LocalCacheService().updateStudyField(field, value);
-    _db.doc(_studyDoc).update({
-      field: value,
-      'lastModified': FieldValue.serverTimestamp(),
-      'lastDevice': 'android',
-    }).catchError((e) {
-      _db.doc(_studyDoc).set({
-        field: value,
-        'lastModified': FieldValue.serverTimestamp(),
-        'lastDevice': 'android',
-      }, SetOptions(merge: true)).catchError((e2) {
-        debugPrint('[FB] updateField set fallback failed: $field — $e2');
-      });
-    });
+    FirestoreWriteQueue().enqueue(_studyDoc, {field: value});
     if (field.startsWith('orderData')) {
       updateTodayField(field, value);
     }

@@ -12,6 +12,7 @@ import '../models/iot_models.dart';
 import '../services/door_sensor_service.dart';
 import '../services/routine_service.dart';
 import '../services/data_audit_service.dart';
+import '../services/write_queue_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -99,6 +100,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _infoCard(),
               const SizedBox(height: 16),
 
+              // ─── 쓰기 큐 ───
+              _writeQueueCard(),
+              const SizedBox(height: 16),
+
               // ─── 데이터 관리 ───
               _dataManagementCard(),
               const SizedBox(height: 40),
@@ -184,94 +189,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ]),
           const SizedBox(height: 12),
           Row(children: [
-            const SizedBox(width: 60),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFf59e0b).withOpacity(0.15),
-                foregroundColor: const Color(0xFFf59e0b),
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            Expanded(
+              child: _toolButton(
+                emoji: '🚪', label: '문 열림 테스트',
+                color: const Color(0xFFf59e0b),
+                onTap: () async {
+                  final prevState = _nfc.state;
+                  final routine = RoutineService();
+                  routine.forceState(DayState.idle);
+                  SensorWakeDetector.resetForTest();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('🔄 idle → 문 열림 테스트 중...'),
+                      duration: Duration(seconds: 1)));
+                  await Future.delayed(const Duration(milliseconds: 300));
+                  DoorSensorService().emitTestEvent(DoorState.open);
+                  await Future.delayed(const Duration(seconds: 1));
+                  if (!mounted) return;
+                  final newState = _nfc.state;
+                  final success = newState == DayState.awake;
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(success
+                      ? '✅ 기상 감지 성공! (idle → awake)'
+                      : '❌ 미감지 (state: ${newState.name})'),
+                    duration: const Duration(seconds: 3),
+                    backgroundColor: success ? Colors.green : Colors.red));
+                  if (prevState != DayState.idle) {
+                    routine.forceState(prevState);
+                  }
+                },
               ),
-              icon: const Text('🚪', style: TextStyle(fontSize: 14)),
-              label: Text('문 열림 테스트',
-                style: BotanicalTypo.label(size: 11, weight: FontWeight.w700,
-                  color: const Color(0xFFf59e0b))),
-              onPressed: () async {
-                final prevState = _nfc.state;
-                final routine = RoutineService();
-                // ① 강제 idle + 기상기록 리셋
-                routine.forceState(DayState.idle);
-                SensorWakeDetector.resetForTest();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('🔄 idle → 문 열림 테스트 중...'),
-                    duration: Duration(seconds: 1)));
-                await Future.delayed(const Duration(milliseconds: 300));
-                // ② 직접 이벤트 발행 (Firestore/디바운스 우회)
-                DoorSensorService().emitTestEvent(DoorState.open);
-                // ③ 결과 확인
-                await Future.delayed(const Duration(seconds: 1));
-                if (!mounted) return;
-                final newState = _nfc.state;
-                final success = newState == DayState.awake;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(success
-                    ? '✅ 기상 감지 성공! (idle → awake)'
-                    : '❌ 미감지 (state: ${newState.name})'),
-                  duration: const Duration(seconds: 3),
-                  backgroundColor: success ? Colors.green : Colors.red));
-                // ★ 테스트 후 항상 원래 상태 복원
-                if (prevState != DayState.idle) {
-                  routine.forceState(prevState);
-                }
-              },
             ),
-          ]),
-          const SizedBox(height: 12),
-          // ── 데이터 감사 ──
-          Row(children: [
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981).withOpacity(_dk ? 0.12 : 0.08),
-                foregroundColor: const Color(0xFF10B981),
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              icon: const Text('🔍', style: TextStyle(fontSize: 14)),
-              label: Text('데이터 감사',
-                style: BotanicalTypo.label(size: 11, weight: FontWeight.w700,
-                  color: const Color(0xFF10B981))),
-              onPressed: () async {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('🔍 데이터 감사 실행 중...'),
-                    duration: Duration(seconds: 2)));
-                final results = await DataAuditService().runForced();
-                if (!mounted) return;
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text('데이터 감사 결과 (${results.length}건)'),
-                    content: SizedBox(
-                      width: double.maxFinite,
-                      child: results.isEmpty
-                        ? const Text('문제 없음')
-                        : ListView(
-                            shrinkWrap: true,
-                            children: results.map((r) => Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(r, style: const TextStyle(fontSize: 12)),
-                            )).toList(),
-                          ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _toolButton(
+                emoji: '🔍', label: '데이터 감사',
+                color: const Color(0xFF10B981),
+                onTap: () async {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('🔍 데이터 감사 실행 중...'),
+                      duration: Duration(seconds: 2)));
+                  final results = await DataAuditService().runForced();
+                  if (!mounted) return;
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text('데이터 감사 결과 (${results.length}건)'),
+                      content: SizedBox(
+                        width: double.maxFinite,
+                        child: results.isEmpty
+                          ? const Text('문제 없음')
+                          : ListView(
+                              shrinkWrap: true,
+                              children: results.map((r) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(r, style: const TextStyle(fontSize: 12)),
+                              )).toList(),
+                            ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('확인')),
+                      ],
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('확인')),
-                    ],
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ]),
         ],
@@ -414,6 +397,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
         style: TextStyle(fontSize: 12, fontFamily: 'monospace', color: _textSub),
         textAlign: TextAlign.end)),
     ]);
+  }
+
+  // ═══ 도구 버튼 ═══
+  Widget _toolButton({
+    required String emoji, required String label,
+    required Color color, required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(_dk ? 0.10 : 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.15))),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text(emoji, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 6),
+          Text(label, style: BotanicalTypo.label(
+            size: 11, weight: FontWeight.w700, color: color)),
+        ]),
+      ),
+    );
+  }
+
+  // ═══ 쓰기 큐 카드 ═══
+  Widget _writeQueueCard() {
+    final wq = FirestoreWriteQueue();
+    final st = wq.stats;
+    final errors = wq.getRecentErrors(limit: 5);
+    final hasErrors = st['failed']! > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BotanicalDeco.card(_dk),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.sync_rounded, size: 18, color: _textMuted),
+          const SizedBox(width: 8),
+          Text('쓰기 큐', style: BotanicalTypo.body(
+            size: 14, weight: FontWeight.w700, color: _textMain)),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: (hasErrors ? BotanicalColors.error : const Color(0xFF10B981))
+                  .withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8)),
+            child: Text(hasErrors ? '${st['failed']} 실패' : '정상',
+              style: BotanicalTypo.label(size: 10, weight: FontWeight.w700,
+                color: hasErrors ? BotanicalColors.error : const Color(0xFF10B981))),
+          ),
+        ]),
+        const SizedBox(height: 14),
+        Row(children: [
+          _statChip('대기', '${st['pending']}', const Color(0xFFf59e0b)),
+          const SizedBox(width: 8),
+          _statChip('성공', '${st['succeeded']}', const Color(0xFF10B981)),
+          const SizedBox(width: 8),
+          _statChip('실패', '${st['failed']}', BotanicalColors.error),
+        ]),
+        if (errors.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ...errors.map((e) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              '${e['time']?.toString().substring(11, 19) ?? '?'} '
+              '${e['docPath']?.toString().split('/').last ?? '?'} — '
+              '${(e['fields'] as List?)?.join(', ') ?? '?'}',
+              style: TextStyle(fontSize: 10, fontFamily: 'monospace',
+                color: BotanicalColors.error.withOpacity(0.7)),
+            ),
+          )),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () {
+              wq.clearErrors();
+              _safeSetState(() {});
+            },
+            child: Text('에러 로그 초기화', style: BotanicalTypo.label(
+              size: 11, weight: FontWeight.w600, color: _accent)),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  Widget _statChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(_dk ? 0.08 : 0.05),
+        borderRadius: BorderRadius.circular(10)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text(label, style: BotanicalTypo.label(size: 10, color: _textMuted)),
+        const SizedBox(width: 4),
+        Text(value, style: BotanicalTypo.label(
+          size: 12, weight: FontWeight.w800, color: color)),
+      ]),
+    );
   }
 
   // ═══ 데이터 관리 카드 ═══

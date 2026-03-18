@@ -17,6 +17,7 @@ import 'services/widget_render_service.dart';
 import 'services/fcm_service.dart';
 import 'services/safety_net_service.dart';
 import 'services/data_audit_service.dart';
+import 'services/write_queue_service.dart';
 
 class AppInit {
   static Future<void> run() async {
@@ -26,6 +27,7 @@ class AppInit {
     // ── Phase 1: Firebase + LocalCache (필수 선행) ──
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     await LocalCacheService().init();
+    await FirestoreWriteQueue().init();
 
     // ── Phase 1.5: Day Rollover (경량, 블로킹 OK) ──
     try {

@@ -4,7 +4,6 @@
 /// study 문서의 todos 필드에서 읽기/쓰기
 /// ═══════════════════════════════════════════════════════════
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../constants.dart';
@@ -14,13 +13,13 @@ import 'creature_service.dart';
 import '../utils/study_date_utils.dart';
 import 'firebase_service.dart';
 import 'widget_render_service.dart';
+import 'write_queue_service.dart';
 
 class TodoService {
   static final TodoService _instance = TodoService._internal();
   factory TodoService() => _instance;
   TodoService._internal();
 
-  final _db = FirebaseFirestore.instance;
   static final String _todosDoc = kStudyDoc;
 
   /// 4AM 경계 적용 오늘 날짜
@@ -66,20 +65,9 @@ class TodoService {
     // ★ 1) 캐시 즉시 갱신 (write 보호 마킹 포함 — 스트림 덮어쓰기 방지)
     FirebaseService().updateTodosCache(todos.date, map);
 
-    // ★ 2) Firestore study doc fire-and-forget (기존 호환)
-    _db.doc(_todosDoc).update({
+    // ★ 2) WriteQueue (study doc)
+    FirestoreWriteQueue().enqueue(_todosDoc, {
       'todos.${todos.date}': map,
-      'lastModified': DateTime.now().millisecondsSinceEpoch,
-      'lastDevice': 'android',
-    }).catchError((e) {
-      debugPrint('[Todos] update failed, trying set: $e');
-      _db.doc(_todosDoc).set({
-        'todos': {todos.date: map},
-        'lastModified': DateTime.now().millisecondsSinceEpoch,
-        'lastDevice': 'android',
-      }, SetOptions(merge: true)).catchError((e2) {
-        debugPrint('[Todos] set fallback failed: $e2');
-      });
     });
 
     // ★ 3) Phase C: today 문서에도 todos 동기화 (오늘 날짜만)
