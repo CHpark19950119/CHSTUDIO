@@ -50,6 +50,9 @@ class _CalendarScreenState extends State<CalendarScreen>
   // ★ Todo 완료율 (날짜별)
   Map<String, double> _monthTodoRates = {};
 
+  // ★ 홈데이 (외출 없는 날)
+  Set<String> _monthHomeDays = {};
+
   late AnimationController _fadeCtrl;
   late AnimationController _waveCtrl;
 
@@ -232,6 +235,22 @@ class _CalendarScreenState extends State<CalendarScreen>
           }
         }
       } catch (_) { _monthTodoRates = {}; }
+
+      // ★ 홈데이 (noOuting 또는 wake 있고 outing 없는 날)
+      try {
+        _monthHomeDays = {};
+        final trRaw = studyData?['timeRecords'] as Map<String, dynamic>?;
+        if (trRaw != null) {
+          final monthPrefix = DateFormat('yyyy-MM').format(_viewMonth);
+          for (final e in trRaw.entries) {
+            if (!e.key.startsWith(monthPrefix) || e.value is! Map) continue;
+            final m = Map<String, dynamic>.from(e.value as Map);
+            if (m['noOuting'] == true || (m['wake'] != null && m['outing'] == null)) {
+              _monthHomeDays.add(e.key);
+            }
+          }
+        }
+      } catch (_) { _monthHomeDays = {}; }
 
       try { await _loadSelectedDay(); } catch (_) { _selectedMemos = []; }
     } catch (e) {
@@ -518,6 +537,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     final isFuture = date.isAfter(DateTime(today.year, today.month, today.day));
     final hasMemo = _monthMemos.containsKey(dateStr);
     final isRestDay = _restDays.contains(dateStr);
+    final isHomeDay = _monthHomeDays.contains(dateStr);
     final isSunday = dow == 0;
     final hasJournal = _journalsForDate(dateStr).isNotEmpty;
 
@@ -555,7 +575,9 @@ class _CalendarScreenState extends State<CalendarScreen>
         decoration: BoxDecoration(
           color: isSelected
             ? _accent.withOpacity(_dk ? 0.15 : 0.08)
-            : _dk ? Colors.white.withOpacity(0.02) : const Color(0xFFF8FAFC),
+            : isHomeDay
+              ? const Color(0xFF5B7ABF).withOpacity(_dk ? 0.08 : 0.05)
+              : _dk ? Colors.white.withOpacity(0.02) : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
@@ -672,6 +694,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                 // 하단: 과목 바 + 인디케이터
                 if (subjectMinutes.isNotEmpty) _buildSubjectBar(subjectMinutes),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  if (isHomeDay) _dot(const Color(0xFF5B7ABF)),
                   if (hasMemo) _dot(const Color(0xFFF59E0B)),
                   if (hasJournal) _dot(const Color(0xFF10B981)),
                   if (_monthTodoRates.containsKey(dateStr))

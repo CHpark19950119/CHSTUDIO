@@ -32,7 +32,7 @@ enum SafetyCheck {
   abnormalData,       // 시간 순서 이상
   stayLocation,       // outing + still (체류) → 어디에 있어?
   // ── v2: 분기 이벤트 ──
-  homeDayConfirm,     // awake + 외출 없음 + 180분+ → 칩거 확인
+  homeDayConfirm,     // awake + 외출 없음 + 180분+ → 홈데이 확인
   autoWakeConfirm,    // 자동 기상 직후 사후 확인
   studyEndConfirm,    // studying + 4시간+ → 아직 공부 중?
   lateMealReminder,   // studying + 마지막 식사/공부 시작 5시간+ → 밥 먹었어?
@@ -288,7 +288,7 @@ class SafetyNetService {
       }
     }
 
-    // ── 7. 칩거 확인 (homeDayConfirm) ──
+    // ── 7. 홈데이 확인 (homeDayConfirm) ──
     if (routine.state == DayState.awake) {
       await _checkHomeDayConfirm(todayKey, now);
     }
@@ -372,7 +372,7 @@ class SafetyNetService {
   //  v2: 분기 이벤트 체크
   // ═══════════════════════════════════════════
 
-  /// A1. 칩거 확인 — awake + 외출 없음 + 기상 후 180분+
+  /// A1. 홈데이 확인 — awake + 외출 없음 + 기상 후 180분+
   Future<void> _checkHomeDayConfirm(String todayKey, DateTime now) async {
     try {
       final records = await FirebaseService().getTimeRecords()
@@ -380,7 +380,7 @@ class SafetyNetService {
       final tr = records[todayKey];
       if (tr == null || tr.wake == null) return;
       if (tr.outing != null) return; // 외출 기록 있으면 스킵
-      if (tr.noOuting) return; // 이미 칩거 확인됨
+      if (tr.noOuting) return; // 이미 홈데이 확인됨
 
       final wakeParts = tr.wake!.split(':');
       final wakeMin = int.parse(wakeParts[0]) * 60 + int.parse(wakeParts[1]);
@@ -470,7 +470,7 @@ class SafetyNetService {
   //  v2: 분기 이벤트 핸들러
   // ═══════════════════════════════════════════
 
-  /// 칩거 확인 → noOuting 기록 → 홈 UI 전환
+  /// 홈데이 확인 → noOuting 기록 → 홈 UI 전환
   Future<void> _handleHomeDayConfirm() async {
     try {
       final fb = FirebaseService();
@@ -486,9 +486,9 @@ class SafetyNetService {
 
       // 홈 화면 즉시 갱신 — DayService notify → home_screen._onNfcChanged → _load()
       DayService().notifyDataChanged();
-      _log('칩거 확인 기록 완료');
+      _log('홈데이 확인 기록 완료');
     } catch (e) {
-      _log('칩거 확인 에러: $e');
+      _log('홈데이 확인 에러: $e');
     }
   }
 

@@ -29,7 +29,7 @@ class CreatureMessages {
   static const homeDayConfirm = [
     '오늘 집에 있을 거야?',
     '밖에 안 나가?',
-    '오늘은 칩거 모드?',
+    '오늘은 홈데이?',
   ];
 
   // ── autoWakeConfirm ──

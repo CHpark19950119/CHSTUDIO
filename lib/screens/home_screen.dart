@@ -68,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   WeatherData? _weatherData;
   bool _noOuting = false; // ★ v10: 외출 안하는 날 (수동)
 
-  /// ★ 집 칩거 자동 감지: 기상 후 3시간+ 외출 없음 OR 수동 _noOuting
+  /// ★ 집 홈데이 자동 감지: 기상 후 3시간+ 외출 없음 OR 수동 _noOuting
   bool get _isHomeDay {
     if (_noOuting) return true;
     if (_wake == null || _outing != null) return false;
@@ -85,7 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) { return false; }
   }
 
-  /// 칩거 모드 수동 토글
+  /// 홈데이 모드 수동 토글
   Future<void> _toggleHomeDay() async {
     final newVal = !_noOuting;
     _safeSetState(() => _noOuting = newVal);
@@ -673,7 +673,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _paperBackground() {
-    // 칩거모드: 인디고 계열, 일반: 보타니컬 계열
+    // 홈데이모드: 인디고 계열, 일반: 보타니컬 계열
     final colors = _isHomeDay
       ? (_dk
         ? [const Color(0xFF151B2E), const Color(0xFF141928),
@@ -793,10 +793,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(height: 10),
             _staggered(2, _activeFocusBanner()),
           ],
-          // ═══ 집 칩거 배너 ═══
+          // ═══ 홈데이 배너 ═══
           if (_isHomeDay) ...[
             const SizedBox(height: 10),
-            _staggered(2, _homeDayBanner()),
+            _staggered(2, AnimatedSize(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutCubic,
+              child: _homeDayBanner(),
+            )),
           ],
           const SizedBox(height: 16),
 
@@ -1273,7 +1277,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // ══════════════════════════════════════════
-  //  ★ 집 칩거 배너
+  //  ★ 집 홈데이 배너
   // ══════════════════════════════════════════
 
   Widget _homeDayBanner() {
@@ -1338,7 +1342,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Text(sub, style: BotanicalTypo.label(
             size: 10, color: _textMuted)),
         ])),
-        // 재택 시간
+        // 홈데이 시간
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
@@ -1348,12 +1352,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             Text('${homeH}h ${homeM}m', style: BotanicalTypo.number(
               size: 13, weight: FontWeight.w700,
               color: _dk ? const Color(0xFFA8BFEF) : const Color(0xFF3D5A99))),
-            Text('재택', style: BotanicalTypo.label(
+            Text('홈데이', style: BotanicalTypo.label(
               size: 9, color: _textMuted)),
           ]),
         ),
         const SizedBox(width: 8),
-        // 칩거 해제 버튼
+        // 홈데이 해제 버튼
         GestureDetector(
           onTap: _toggleHomeDay,
           child: Container(
@@ -1369,11 +1373,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // ══════════════════════════════════════════
-  //  ★ 집 칩거 전용 대시보드
+  //  ★ 집 홈데이 전용 대시보드
   // ══════════════════════════════════════════
 
   Widget _homeDayPage() {
-    // 재택 경과 시간
+    // 홈데이 경과 시간
     int homeMin = 0;
     if (_wake != null) {
       try {
@@ -1472,9 +1476,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               Text(greetSub, style: BotanicalTypo.label(
                 size: 12, color: _textMuted)),
               const SizedBox(height: 20),
-              // 재택시간 + 순공시간
+              // 홈데이시간 + 순공시간
               Row(children: [
-                _homeDayStatPill('🏡', '${homeH}h ${homeM}m', '재택', hc),
+                _homeDayStatPill('🏡', '${homeH}h ${homeM}m', '홈데이', hc),
                 const SizedBox(width: 10),
                 _homeDayStatPill('📖', '${_effMin ~/ 60}h ${(_effMin % 60).toString().padLeft(2, '0')}m', '순공', BotanicalColors.primary),
                 const SizedBox(width: 10),
