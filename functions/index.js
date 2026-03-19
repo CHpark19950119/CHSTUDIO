@@ -132,6 +132,20 @@ async function setLight(on) {
   }
 }
 
+// ═══ 스탠드(20A) 제어 헬퍼 ═══
+async function setDeskLight(on) {
+  try {
+    const {accessId, accessSecret} = getConfig();
+    const deskPlugId = "ebeaff0f5a69754067yfdv";
+    const token = await getTuyaToken(accessId, accessSecret);
+    const ok = await sendTuyaCommand(accessId, accessSecret, token, deskPlugId,
+      [{code: "switch_1", value: on}]);
+    console.log("DeskLight " + (on ? "ON" : "OFF") + ":", ok);
+  } catch (e) {
+    console.error("setDeskLight error:", e.message);
+  }
+}
+
 async function pollDoorLogic() {
   const {accessId, accessSecret, deviceId} = getConfig();
 
@@ -283,6 +297,22 @@ async function pollDoorLogic() {
           setLight(true);
           console.log("Room entry → light ON");
         }
+      }
+
+      // ═══ 책상 스탠드 자동 제어 (20A) ═══
+      const atDesk = (presenceState === "peaceful" || presenceState === "presence")
+        && targetDist !== null && targetDist > 200;
+      const wasAtDesk = (prevPresence.state === "peaceful" || prevPresence.state === "presence")
+        && prevPresence.distance !== undefined && prevPresence.distance > 200;
+
+      if (atDesk && !wasAtDesk && !hasBedTime) {
+        // 책상 앉음 → 스탠드 ON
+        setDeskLight(true);
+        console.log("Desk detected (" + targetDist + "cm) → desk light ON");
+      } else if (!atDesk && wasAtDesk) {
+        // 책상 떠남 → 스탠드 OFF
+        setDeskLight(false);
+        console.log("Left desk → desk light OFF");
       }
 
       // ═══ 취침 자동 감지 ═══
@@ -1140,7 +1170,18 @@ const AI_TOOLS = [
   },
   {
     name: "set_light",
-    description: "방 전등 켜기/끄기",
+    description: "방 전등(천장) 켜기/끄기",
+    input_schema: {
+      type: "object",
+      properties: {
+        on: {type: "boolean", description: "true=켜기, false=끄기"},
+      },
+      required: ["on"],
+    },
+  },
+  {
+    name: "set_desk_light",
+    description: "책상 스탠드 켜기/끄기",
     input_schema: {
       type: "object",
       properties: {
@@ -1191,8 +1232,8 @@ tool 호출이 필요하면 반드시 tool을 사용해. 일반 대화도 가능
 IoT 기기:
 - 도어센서(door): 방문 열림/닫힘
 - mmWave(mmwave): 존재감지 (none=비어있음, presence=움직임, peaceful=정지), distance=거리cm
-- 16A 소켓(plug_16a): 방 전등 ON/OFF
-- 20A 소켓(plug_20a): 예비 (미연결)
+- 16A 소켓(plug_16a): 방 전등(천장) ON/OFF
+- 20A 소켓(plug_20a): 책상 스탠드 ON/OFF
 
 "센서 상태" → iot_status, "전등 상태" → query_sensor(plug_16a)`;
 
@@ -1310,6 +1351,11 @@ async function executeTool(name, input) {
   if (name === "set_light") {
     await setLight(input.on);
     return input.on ? "💡 전등 켰어" : "🌙 전등 껐어";
+  }
+
+  if (name === "set_desk_light") {
+    await setDeskLight(input.on);
+    return input.on ? "💡 스탠드 켰어" : "🌙 스탠드 껐어";
   }
 
   if (name === "list_todos") {
