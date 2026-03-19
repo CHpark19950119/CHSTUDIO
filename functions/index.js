@@ -1044,3 +1044,313 @@ exports.checkGosiManual = functions.https.onRequest(async (req, res) => {
     res.status(500).json({success: false, error: err.message});
   }
 });
+
+// ═══════════════════════════════════════════════════════════
+//  🤖 AI 비서 — 텔레그램 → Claude API (tool use) → Firestore
+// ═══════════════════════════════════════════════════════════
+
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+
+const AI_TOOLS = [
+  {
+    name: "add_todo",
+    description: "오늘 투두(할 일) 추가. 예: '헌법 모의고사 풀기', '행정법 30강 듣기'",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: {type: "string", description: "할 일 제목"},
+        subject: {type: "string", enum: ["언어", "자료", "상황", "경제", "7급전공"], description: "과목 (선택)"},
+        estimatedMinutes: {type: "integer", description: "예상 소요 시간 (분, 선택)"},
+        priority: {type: "string", enum: ["high", "medium", "low"], description: "우선순위 (선택)"},
+        type: {type: "string", enum: ["study", "review", "mock", "task", "errand"], description: "유형 (선택)"},
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: "add_habit",
+    description: "습관 추가. 예: '매일 아침 커피사기', '취침 전 스트레칭'",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: {type: "string", description: "습관 제목"},
+        emoji: {type: "string", description: "이모지 (기본: ✅)"},
+        autoTrigger: {type: "string", enum: ["wake", "sleep", "study", "outing", "meal"], description: "자동 트리거 (선택). wake=기상, sleep=취침, study=공부시작, outing=외출, meal=식사"},
+        triggerTime: {type: "string", description: "트리거 시간 HH:mm (선택, autoTrigger와 함께)"},
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: "add_goal",
+    description: "진행도 목표 추가. 예: '행정법 기본서 1회독 500페이지', '경제학 인강 60강'",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: {type: "string", description: "목표 제목"},
+        subject: {type: "string", enum: ["언어", "자료", "상황", "경제", "7급전공"], description: "과목"},
+        totalUnits: {type: "integer", description: "총 단위 수 (강, 페이지 등)"},
+        unitName: {type: "string", description: "단위명 (강, 페이지, 회 등). 기본: 강"},
+        goalType: {type: "string", enum: ["lecture", "textbook"], description: "유형. lecture=인강, textbook=교재"},
+        endDate: {type: "string", description: "마감일 yyyy-MM-dd (선택)"},
+      },
+      required: ["title", "subject", "totalUnits"],
+    },
+  },
+  {
+    name: "today_summary",
+    description: "오늘 하루 요약 조회. 기상, 공부, 외출, 식사, 투두 현황 등",
+    input_schema: {type: "object", properties: {}, required: []},
+  },
+  {
+    name: "set_light",
+    description: "방 전등 켜기/끄기",
+    input_schema: {
+      type: "object",
+      properties: {
+        on: {type: "boolean", description: "true=켜기, false=끄기"},
+      },
+      required: ["on"],
+    },
+  },
+  {
+    name: "list_todos",
+    description: "오늘 투두 목록 조회",
+    input_schema: {type: "object", properties: {}, required: []},
+  },
+  {
+    name: "complete_todo",
+    description: "투두 완료 처리 (제목으로 검색)",
+    input_schema: {
+      type: "object",
+      properties: {
+        keyword: {type: "string", description: "투두 제목 키워드 (부분 일치)"},
+      },
+      required: ["keyword"],
+    },
+  },
+];
+
+const AI_SYSTEM = `너는 CHEONHONG STUDIO 앱의 AI 비서야. 사용자의 공부/루틴을 관리해.
+오늘 날짜: ${kstStudyDate()}
+간결하게 답하되 친근한 반말 사용. 이모지 적절히.
+tool 호출이 필요하면 반드시 tool을 사용해. 일반 대화도 가능.`;
+
+// ── tool 실행 ──
+
+async function executeTool(name, input) {
+  const dateStr = kstStudyDate();
+
+  if (name === "add_todo") {
+    const studyData = await db.doc("users/" + UID + "/data/study").get();
+    const data = studyData.exists ? studyData.data() : {};
+    const todosRaw = data.todos || {};
+    const dayTodos = todosRaw[dateStr] || {date: dateStr, items: []};
+    const items = dayTodos.items || [];
+
+    const newItem = {
+      id: "todo_" + Date.now(),
+      title: input.title,
+      completed: false,
+      order: items.length,
+    };
+    if (input.subject) newItem.subject = input.subject;
+    if (input.estimatedMinutes) newItem.estimatedMinutes = input.estimatedMinutes;
+    if (input.priority) newItem.priority = input.priority;
+    if (input.type) newItem.type = input.type;
+
+    items.push(newItem);
+    await db.doc("users/" + UID + "/data/study").set(
+      {todos: {[dateStr]: {date: dateStr, items, updatedAt: new Date().toISOString()}}},
+      {merge: true});
+    return "✅ 투두 추가: " + input.title;
+  }
+
+  if (name === "add_habit") {
+    const studyData = await db.doc("users/" + UID + "/data/study").get();
+    const data = studyData.exists ? studyData.data() : {};
+    const orderData = data.orderData || {goals: [], habits: [], expenses: []};
+    const habits = orderData.habits || [];
+
+    const newHabit = {
+      id: "habit_" + Date.now(),
+      title: input.title,
+      emoji: input.emoji || "✅",
+      freq: "daily",
+      targetPerWeek: 7,
+      completedDates: [],
+      createdAt: new Date().toISOString(),
+      archived: false,
+      rank: 0,
+      targetDays: 21,
+      streakHistory: [],
+    };
+    if (input.autoTrigger) newHabit.autoTrigger = input.autoTrigger;
+    if (input.triggerTime) newHabit.triggerTime = input.triggerTime;
+
+    habits.push(newHabit);
+    await db.doc("users/" + UID + "/data/study").set(
+      {orderData: {...orderData, habits}}, {merge: true});
+    const triggerLabel = input.autoTrigger
+      ? {wake: "기상", sleep: "취침", study: "공부", outing: "외출", meal: "식사"}[input.autoTrigger] || ""
+      : "";
+    return "✅ 습관 추가: " + input.title + (triggerLabel ? " (" + triggerLabel + " 시 자동)" : "");
+  }
+
+  if (name === "add_goal") {
+    const studyData = await db.doc("users/" + UID + "/data/study").get();
+    const data = studyData.exists ? studyData.data() : {};
+    const orderData = data.orderData || {goals: [], habits: [], expenses: []};
+    const goals = orderData.goals || [];
+
+    const newGoal = {
+      id: "goal_" + Date.now(),
+      subject: input.subject,
+      title: input.title,
+      totalUnits: input.totalUnits,
+      unitName: input.unitName || "강",
+      goalType: input.goalType || "lecture",
+      startPage: 0, endPage: 0,
+      currentUnit: 0,
+      completed: false,
+      dailyLogs: [],
+      completionHistory: [],
+      createdAt: new Date().toISOString(),
+    };
+    if (input.endDate) newGoal.endDate = input.endDate;
+
+    goals.push(newGoal);
+    await db.doc("users/" + UID + "/data/study").set(
+      {orderData: {...orderData, goals}}, {merge: true});
+    return "✅ 목표 추가: " + input.title + " (" + input.totalUnits + (input.unitName || "강") + ")";
+  }
+
+  if (name === "today_summary") {
+    const [todayDoc, studyDoc] = await Promise.all([
+      db.doc("users/" + UID + "/data/today").get(),
+      db.doc("users/" + UID + "/data/study").get(),
+    ]);
+    const today = todayDoc.exists ? todayDoc.data() : {};
+    const study = studyDoc.exists ? studyDoc.data() : {};
+    const tr = today.timeRecords || {};
+    const str = (study.studyTimeRecords || {})[dateStr];
+    const todos = ((study.todos || {})[dateStr] || {}).items || [];
+    const doneTodos = todos.filter((t) => t.completed).length;
+
+    let summary = "📊 오늘 요약\n";
+    if (tr.wake) summary += "☀️ 기상: " + tr.wake + "\n";
+    if (tr.outing) summary += "🚶 외출: " + tr.outing + (tr.returnHome ? " → 귀가 " + tr.returnHome : " (외출 중)") + "\n";
+    if (tr.study) summary += "📖 공부: " + tr.study + (tr.studyEnd ? " → " + tr.studyEnd : " (진행 중)") + "\n";
+    if (str) summary += "⏱ 순공: " + Math.floor((str.effectiveMinutes || str.totalMinutes || 0) / 60) + "h " + ((str.effectiveMinutes || str.totalMinutes || 0) % 60) + "m\n";
+    summary += "📋 투두: " + doneTodos + "/" + todos.length + "개 완료\n";
+    if (tr.bedTime) summary += "🛏️ 취침: " + tr.bedTime;
+    return summary;
+  }
+
+  if (name === "set_light") {
+    await setLight(input.on);
+    return input.on ? "💡 전등 켰어" : "🌙 전등 껐어";
+  }
+
+  if (name === "list_todos") {
+    const studyDoc = await db.doc("users/" + UID + "/data/study").get();
+    const data = studyDoc.exists ? studyDoc.data() : {};
+    const todos = ((data.todos || {})[dateStr] || {}).items || [];
+    if (todos.length === 0) return "📋 오늘 투두 없음";
+    return "📋 오늘 투두:\n" + todos.map((t, i) =>
+      (t.completed ? "✅" : "⬜") + " " + t.title +
+      (t.subject ? " [" + t.subject + "]" : "") +
+      (t.estimatedMinutes ? " " + t.estimatedMinutes + "분" : "")
+    ).join("\n");
+  }
+
+  if (name === "complete_todo") {
+    const studyDoc = await db.doc("users/" + UID + "/data/study").get();
+    const data = studyDoc.exists ? studyDoc.data() : {};
+    const dayTodos = (data.todos || {})[dateStr] || {date: dateStr, items: []};
+    const items = dayTodos.items || [];
+    const idx = items.findIndex((t) => !t.completed && t.title.includes(input.keyword));
+    if (idx < 0) return "❌ '" + input.keyword + "' 투두 못 찾음";
+    items[idx].completed = true;
+    items[idx].completedAt = new Date().toISOString();
+    await db.doc("users/" + UID + "/data/study").set(
+      {todos: {[dateStr]: {date: dateStr, items, updatedAt: new Date().toISOString()}}},
+      {merge: true});
+    return "✅ 완료: " + items[idx].title;
+  }
+
+  return "⚠️ 알 수 없는 도구: " + name;
+}
+
+// ── Claude API 호출 ──
+
+async function callClaude(userMessage) {
+  const {data} = await axios.post(ANTHROPIC_URL, {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1024,
+    system: AI_SYSTEM,
+    tools: AI_TOOLS,
+    messages: [{role: "user", content: userMessage}],
+  }, {
+    headers: {
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    timeout: 30000,
+  });
+
+  // tool_use 처리
+  const results = [];
+  let textReply = "";
+
+  for (const block of data.content) {
+    if (block.type === "text") {
+      textReply += block.text;
+    } else if (block.type === "tool_use") {
+      const toolResult = await executeTool(block.name, block.input);
+      results.push(toolResult);
+    }
+  }
+
+  // tool 결과가 있으면 그것만, 없으면 텍스트 응답
+  if (results.length > 0) return results.join("\n");
+  return textReply || "🤔 응답 없음";
+}
+
+// ── 내 봇 웹훅 ──
+
+exports.myBotWebhook = functions.https.onRequest(async (req, res) => {
+  try {
+    if (req.method !== "POST") { res.status(200).send("OK"); return; }
+
+    const message = req.body && req.body.message;
+    if (!message || !message.text) { res.status(200).send("OK"); return; }
+
+    const chatId = String(message.chat.id);
+    if (chatId !== MY_CHAT_ID) { res.status(200).send("OK"); return; }
+
+    const text = message.text.trim();
+    console.log("MyBot:", text);
+
+    const reply = await callClaude(text);
+
+    // 텔레그램 응답
+    await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage", {
+      chat_id: MY_CHAT_ID,
+      text: reply,
+      disable_web_page_preview: true,
+    }).catch(() => {});
+
+    res.status(200).send("OK");
+  } catch (err) {
+    console.error("myBotWebhook error:", err.message);
+    // 에러 시 사용자에게 알림
+    await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage", {
+      chat_id: MY_CHAT_ID,
+      text: "⚠️ AI 비서 에러: " + err.message,
+    }).catch(() => {});
+    res.status(200).send("OK");
+  }
+});
