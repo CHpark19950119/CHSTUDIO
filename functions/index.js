@@ -238,7 +238,6 @@ async function pollDoorLogic() {
       // stationarySince 추적 — peaceful + 침대 근처(≤200cm) 연속 시작 시점
       const inBed = presenceState === "peaceful" && targetDist !== null && targetDist <= 200;
       if (inBed) {
-        // 이전에도 침대 조건이었으면 유지, 아니면 새로 시작
         const prevInBed = prevPresence.state === "peaceful"
           && prevPresence.distance !== undefined && prevPresence.distance <= 200;
         if (!prevPresence.stationarySince || !prevInBed) {
@@ -248,7 +247,43 @@ async function pollDoorLogic() {
         presenceUpdate.stationarySince = null;
       }
 
+      // noneSince 추적 — 방 비움 연속 시작 시점
+      if (presenceState === "none") {
+        if (!prevPresence.noneSince || prevPresence.state !== "none") {
+          presenceUpdate.noneSince = admin.firestore.FieldValue.serverTimestamp();
+        }
+      } else {
+        presenceUpdate.noneSince = null;
+      }
+
       await todayRef.set({presence: presenceUpdate}, {merge: true});
+
+      // ═══ bedTime 가드 읽기 (전등 자동화용) ═══
+      const todayDoc2 = await db.doc("users/" + UID + "/data/today").get();
+      const todayTr2 = (todayDoc2.exists ? todayDoc2.data() : {}).timeRecords || {};
+      const hasBedTime = !!(todayTr2.bedTime || todayTr2[kstStudyDate()]?.bedTime);
+
+      // ═══ 방 비움 5분 → 전등 OFF ═══
+      if (presenceState === "none" && !hasBedTime) {
+        const ns = prevPresence.noneSince;
+        if (ns && ns.toDate) {
+          const noneMin = (Date.now() - ns.toDate().getTime()) / (1000 * 60);
+          if (noneMin >= 5) {
+            // 한 번만 실행 (이전에 이미 꺼졌으면 멱등)
+            setLight(false);
+            console.log("Room empty 5min → light OFF");
+          }
+        }
+      }
+
+      // ═══ 방 복귀 (none→presence/peaceful) → 전등 ON ═══
+      if (prevPresence.state === "none" && presenceState !== "none" && !hasBedTime) {
+        const kstH = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
+        if (kstH >= 18 || kstH < 7) {
+          setLight(true);
+          console.log("Room entry → light ON");
+        }
+      }
 
       // ═══ 취침 자동 감지 ═══
       sleepTime = await checkSleepByPresence(doc, presenceState, prevPresence, targetDist);
