@@ -793,15 +793,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(height: 10),
             _staggered(2, _activeFocusBanner()),
           ],
-          // ═══ 홈데이 배너 ═══
-          if (_isHomeDay) ...[
-            const SizedBox(height: 10),
-            _staggered(2, AnimatedSize(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.easeOutCubic,
-              child: _homeDayBanner(),
-            )),
-          ],
+          // (홈데이 배너는 헤더에 통합됨)
           const SizedBox(height: 16),
 
           // ═══ TODAY — 오늘 할 것 ═══
@@ -992,6 +984,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ══════════════════════════════════════════
 
   Widget _weatherHeaderBar() {
+    if (_isHomeDay) return _homeDayHeader();
+
     final now = DateTime.now();
     final wd = ['월','화','수','목','금','토','일'][now.weekday - 1];
     final w = _weatherData;
@@ -1049,6 +1043,77 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           }),
           const SizedBox(width: 6),
           _headerIconBtn(Icons.edit_note_rounded, _showAddMemoDialog, size: 20),
+          const SizedBox(width: 6),
+          _headerIconBtn(Icons.settings_outlined, () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const SettingsScreen())), size: 18),
+        ]),
+      ],
+    );
+  }
+
+  Widget _homeDayHeader() {
+    final now = DateTime.now();
+    final wd = ['월','화','수','목','금','토','일'][now.weekday - 1];
+    final w = _weatherData;
+    final hcLight = _dk ? const Color(0xFFA8BFEF) : const Color(0xFF3D5A99);
+
+    // 홈데이 경과시간
+    int homeMin = 0;
+    if (_wake != null) {
+      try {
+        final p = _wake!.split(':');
+        var wt = DateTime(now.year, now.month, now.day, int.parse(p[0]), int.parse(p[1]));
+        if (wt.isAfter(now)) wt = wt.subtract(const Duration(days: 1));
+        homeMin = now.difference(wt).inMinutes.clamp(0, 1440);
+      } catch (_) {}
+    }
+
+    // 기존 헤더와 동일한 구조, 색상만 인디고
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Text('🏡', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 5),
+            Text('HOME DAY', style: BotanicalTypo.brand(color: hcLight)),
+            if (homeMin > 0) ...[
+              const SizedBox(width: 8),
+              Text('${homeMin ~/ 60}h ${homeMin % 60}m', style: BotanicalTypo.number(
+                size: 11, weight: FontWeight.w700, color: _textMuted)),
+            ],
+          ]),
+          const SizedBox(height: 4),
+          Row(children: [
+            Text('${now.month}월 ${now.day}일 ($wd)',
+              style: BotanicalTypo.heading(size: 22, weight: FontWeight.w800, color: _textMain)),
+            if (w != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _dk ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(8)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(w.emoji, style: const TextStyle(fontSize: 12)),
+                  const SizedBox(width: 3),
+                  Text('${w.temp.round()}°', style: BotanicalTypo.number(
+                    size: 12, weight: FontWeight.w700, color: _textSub)),
+                ]),
+              ),
+            ],
+          ]),
+        ])),
+        Row(children: [
+          // 홈데이 해제
+          GestureDetector(
+            onTap: _toggleHomeDay,
+            child: Container(
+              width: 34, height: 34,
+              decoration: BoxDecoration(
+                color: hcLight.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10)),
+              child: Icon(Icons.home_outlined, size: 16, color: hcLight))),
           const SizedBox(width: 6),
           _headerIconBtn(Icons.settings_outlined, () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const SettingsScreen())), size: 18),

@@ -913,3 +913,134 @@ exports.girlfriendBotWebhook = functions.https.onRequest(async (req, res) => {
     res.status(200).send("OK");
   }
 });
+
+// ═══════════════════════════════════════════════════════════
+//  📋 고시 공고 크롤러 — 사이버국가고시센터 공지사항
+//  하루 1회 (08:00 KST) 새 공고 확인 → 텔레그램 알림
+// ═══════════════════════════════════════════════════════════
+
+const GOSI_BBS_URL = "https://www.gosi.kr/cop/bbs/selectBoardList.do?bbsId=BBSMSTR_000000000131";
+const GOSI_DETAIL_URL = "https://www.gosi.kr/cop/bbs/selectBoardArticle.do?bbsId=BBSMSTR_000000000131&nttId=";
+
+async function pollGosiLogic() {
+  // 1. Firestore에서 마지막 확인한 nttId 읽기
+  const metaRef = db.doc("users/" + UID + "/data/meta");
+  const metaDoc = await metaRef.get();
+  const meta = metaDoc.exists ? metaDoc.data() : {};
+  const lastNttId = meta.gosiLastNttId || 0;
+
+  // 2. 공지사항 페이지 크롤링
+  const {data: html} = await axios.get(GOSI_BBS_URL, {
+    timeout: 15000,
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Connection": "keep-alive",
+      "Referer": "https://www.gosi.kr/",
+    },
+    maxRedirects: 5,
+  });
+
+  // 3. 게시글 파싱 — fn_egov_inqire_notice('nttId','bbsId') 패턴
+  const regex = /fn_egov_inqire_notice\('(\d+)'/g;
+  const titleRegex = /<td[^>]*class="tit"[^>]*>([\s\S]*?)<\/td>/gi;
+  const dateRegex = /(\d{4}\.\d{2}\.\d{2})/g;
+
+  // 행 단위 파싱
+  const rows = html.split(/<tr[^>]*>/i).slice(1);
+  const notices = [];
+
+  for (const row of rows) {
+    const nttMatch = /fn_egov_inqire_notice\('(\d+)'/.exec(row);
+    if (!nttMatch) continue;
+    const nttId = parseInt(nttMatch[1]);
+
+    // 제목 추출
+    const titMatch = /<td[^>]*class="tit"[^>]*>([\s\S]*?)<\/td>/i.exec(row);
+    let title = "제목 없음";
+    if (titMatch) {
+      title = titMatch[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+    }
+
+    // 날짜 추출
+    const dates = row.match(/\d{4}\.\d{2}\.\d{2}/g);
+    const date = dates ? dates[dates.length - 1] : "";
+
+    // 시험종류 추출
+    const typeMatch = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+    let examType = "";
+    let tdIdx = 0;
+    let m;
+    while ((m = /<td[^>]*>([\s\S]*?)<\/td>/gi.exec(row)) !== null) {
+      tdIdx++;
+      if (tdIdx === 2) {
+        examType = m[1].replace(/<[^>]+>/g, "").trim();
+        break;
+      }
+    }
+
+    notices.push({nttId, title, date, examType});
+  }
+
+  if (notices.length === 0) {
+    return {success: true, newCount: 0, msg: "파싱 실패 또는 공지 없음"};
+  }
+
+  // 4. 새 공고 필터
+  const newNotices = notices.filter((n) => n.nttId > lastNttId);
+
+  if (newNotices.length === 0) {
+    return {success: true, newCount: 0, latest: notices[0]?.nttId};
+  }
+
+  // 5. 텔레그램 알림
+  let msg = "📋 고시 공고 " + newNotices.length + "건\n";
+  for (const n of newNotices.slice(0, 5)) {
+    msg += "\n" + (n.examType ? "[" + n.examType + "] " : "");
+    msg += n.title;
+    if (n.date) msg += " (" + n.date + ")";
+    msg += "\n" + GOSI_DETAIL_URL + n.nttId;
+  }
+  if (newNotices.length > 5) {
+    msg += "\n\n... 외 " + (newNotices.length - 5) + "건";
+  }
+
+  await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+    {chat_id: MY_CHAT_ID, text: msg, disable_web_page_preview: true}).catch(() => {});
+
+  // 6. 마지막 nttId 업데이트
+  const maxNttId = Math.max(...notices.map((n) => n.nttId));
+  await metaRef.set({gosiLastNttId: maxNttId}, {merge: true});
+
+  console.log("Gosi:", newNotices.length, "new, max:", maxNttId);
+  return {success: true, newCount: newNotices.length, maxNttId};
+}
+
+// 매일 08:00 KST
+exports.pollGosiNotice = functions.pubsub
+  .schedule("0 8 * * *")
+  .timeZone("Asia/Seoul")
+  .onRun(async () => {
+    try {
+      const result = await pollGosiLogic();
+      console.log("Gosi poll:", JSON.stringify(result));
+    } catch (err) {
+      console.error("Gosi poll error:", err.message);
+      // 에러 시 텔레그램 알림
+      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+        {chat_id: MY_CHAT_ID, text: "⚠️ 고시 공고 크롤링 실패\n에러: " + err.message}).catch(() => {});
+    }
+    return null;
+  });
+
+// 수동 테스트
+exports.checkGosiManual = functions.https.onRequest(async (req, res) => {
+  try {
+    const result = await pollGosiLogic();
+    res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({success: false, error: err.message});
+  }
+});
