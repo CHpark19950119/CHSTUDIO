@@ -304,14 +304,18 @@ async function pollDoorLogic() {
         && targetDist !== null && targetDist > 200;
       const wasAtDesk = (prevPresence.state === "peaceful" || prevPresence.state === "presence")
         && prevPresence.distance !== undefined && prevPresence.distance > 200;
+      const deskLightLocked = prevPresence.deskLightLock || false;
 
-      if (atDesk && !wasAtDesk && !hasBedTime) {
+      if (atDesk && !wasAtDesk && !hasBedTime && !deskLightLocked) {
         // 책상 앉음 → 스탠드 ON
         setDeskLight(true);
         console.log("Desk detected (" + targetDist + "cm) → desk light ON");
       } else if (!atDesk && wasAtDesk) {
-        // 책상 떠남 → 스탠드 OFF
+        // 책상 떠남 → 스탠드 OFF + 잠금 해제
         setDeskLight(false);
+        if (deskLightLocked) {
+          await todayRef.set({"presence.deskLightLock": false}, {merge: true});
+        }
         console.log("Left desk → desk light OFF");
       }
 
@@ -1355,7 +1359,15 @@ async function executeTool(name, input) {
 
   if (name === "set_desk_light") {
     await setDeskLight(input.on);
-    return input.on ? "💡 스탠드 켰어" : "🌙 스탠드 껐어";
+    // 수동 OFF → 자동화 잠금 (책상 떠날 때까지)
+    if (!input.on) {
+      await db.doc("users/" + UID + "/data/iot").set(
+        {"presence.deskLightLock": true}, {merge: true});
+    } else {
+      await db.doc("users/" + UID + "/data/iot").set(
+        {"presence.deskLightLock": false}, {merge: true});
+    }
+    return input.on ? "💡 스탠드 켰어" : "🌙 스탠드 껐어 (자동 잠금)";
   }
 
   if (name === "list_todos") {
