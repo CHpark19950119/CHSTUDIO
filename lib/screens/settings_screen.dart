@@ -88,10 +88,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _wakeDetectCard(),
               const SizedBox(height: 16),
 
-              // ─── 수면 자동 감지 ───
-              _sleepDetectCard(),
-              const SizedBox(height: 16),
-
               // ─── 빅스비 연동 ───
               _bixbyCard(),
               const SizedBox(height: 16),

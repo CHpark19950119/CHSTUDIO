@@ -344,6 +344,99 @@ extension _HomeRoutineCard on _HomeScreenState {
       if (_studyStart != null && _studyEnd == null) _studyEnd = timeStr;
     });
   }
+
+  // ═══════════════════════════════════════════════════
+  // IoT Presence 카드 — mmWave 센서 실시간 상태
+  // ═══════════════════════════════════════════════════
+
+  Widget _presenceCard() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.doc(kIotDoc).snapshots(),
+      builder: (ctx, snap) {
+        String emoji = '📡', label = '센서 연결 대기';
+        Color color = _textMuted;
+        int? dist;
+        String? timerStr;
+
+        if (snap.hasData && snap.data!.exists) {
+          final data = snap.data!.data() as Map<String, dynamic>? ?? {};
+          final presence = data['presence'] as Map<String, dynamic>?;
+          if (presence != null) {
+            final state = presence['state'] as String? ?? 'unknown';
+            final rawDist = presence['distance'];
+            dist = rawDist is int ? rawDist : (rawDist is num ? rawDist.toInt() : null);
+            final since = presence['stationarySince'];
+
+            switch (state) {
+              case 'peaceful':
+                emoji = dist != null && dist <= 200 ? '🛏️' : '🪑';
+                label = dist != null && dist <= 200 ? '침대' : '책상';
+                color = dist != null && dist <= 200 ? const Color(0xFF6B5DAF) : BotanicalColors.primary;
+                break;
+              case 'presence':
+                emoji = '🚶';
+                label = '움직임';
+                color = const Color(0xFFE8A735);
+                break;
+              case 'none':
+                emoji = '🚫';
+                label = '비어있음';
+                color = _textMuted;
+                break;
+              default:
+                emoji = '📡';
+                label = state;
+                color = _textMuted;
+            }
+
+            if (since != null && since is Timestamp && state == 'peaceful' && dist != null && dist <= 200) {
+              final elapsed = DateTime.now().difference(since.toDate());
+              final min = elapsed.inMinutes;
+              timerStr = min < 60 ? '${min}분째' : '${min ~/ 60}h ${min % 60}m째';
+            }
+          }
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: _dk ? const Color(0xFF0F1825) : const Color(0xFFFDFAF4),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _border.withOpacity(0.12))),
+          child: Row(children: [
+            Text(emoji, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 10),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(children: [
+                  Text(label, style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+                  if (dist != null) ...[
+                    const SizedBox(width: 6),
+                    Text('${dist}cm', style: TextStyle(
+                      fontSize: 11, color: _textMuted)),
+                  ],
+                  if (timerStr != null) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6B5DAF).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8)),
+                      child: Text(timerStr, style: const TextStyle(
+                        fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF6B5DAF)))),
+                  ],
+                ]),
+              ],
+            )),
+            Icon(Icons.sensors_rounded, size: 16, color: _textMuted.withOpacity(0.3)),
+          ]),
+        );
+      },
+    );
+  }
 }
 
 /// 루틴 아이템 데이터

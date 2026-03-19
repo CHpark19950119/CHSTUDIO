@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/botanical_theme.dart';
 import '../services/focus_service.dart';
+import '../constants.dart';
 import '../services/firebase_service.dart';
 import '../services/day_service.dart';
 import '../services/weather_service.dart';
@@ -656,7 +657,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: IndexedStack(
             index: _tab,
             children: [
-              SafeArea(child: _isHomeDay ? _homeDayPage() : _dashboardPage()),
+              SafeArea(child: _dashboardPage()),
               SafeArea(child: _todoPage()),
               SafeArea(child: _focusPage()),
               SafeArea(child: _recordsPage()),
@@ -672,17 +673,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _paperBackground() {
+    // 칩거모드: 인디고 계열, 일반: 보타니컬 계열
+    final colors = _isHomeDay
+      ? (_dk
+        ? [const Color(0xFF151B2E), const Color(0xFF141928),
+           const Color(0xFF161C2D), const Color(0xFF121725)]
+        : [const Color(0xFFF2F4FA), const Color(0xFFEDF1F8),
+           const Color(0xFFE8ECF5), const Color(0xFFE4E9F2)])
+      : (_dk
+        ? [const Color(0xFF1C1410), const Color(0xFF1A1210),
+           const Color(0xFF1D1512), const Color(0xFF181010)]
+        : [const Color(0xFFFDF9F2), const Color(0xFFFAF5EC),
+           const Color(0xFFF6F0E5), const Color(0xFFF2ECDF)]);
     return Positioned.fill(
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter, end: Alignment.bottomCenter,
             stops: const [0.0, 0.3, 0.7, 1.0],
-            colors: _dk
-              ? [const Color(0xFF1C1410), const Color(0xFF1A1210),
-                 const Color(0xFF1D1512), const Color(0xFF181010)]
-              : [const Color(0xFFFDF9F2), const Color(0xFFFAF5EC),
-                 const Color(0xFFF6F0E5), const Color(0xFFF2ECDF)],
+            colors: colors,
           ),
         ),
         child: CustomPaint(painter: PaperGrainPainter(_dk)),
@@ -774,6 +785,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _staggered(1, _nfcStatusCard()),
           const SizedBox(height: 10),
           _staggered(1, _studyTimeCard()),
+          const SizedBox(height: 10),
+          _staggered(1, _presenceCard()),
           const SizedBox(height: 10),
           _staggered(2, _libraryCard()),
           if (_ft.isRunning) ...[

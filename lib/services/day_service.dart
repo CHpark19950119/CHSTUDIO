@@ -8,6 +8,7 @@ import '../models/models.dart';
 import '../models/order_models.dart';
 import '../utils/study_date_utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../constants.dart';
 import 'firebase_service.dart';
 import 'geofence_service.dart';
 import 'telegram_service.dart';
@@ -172,19 +173,22 @@ class DayService extends ChangeNotifier {
 
   /// Firestore에서 오늘 wake 기록 확인 → 상태 복원
   /// (FCM 미도달 / SharedPrefs 유실 대비 안전망)
+  /// ★ 캐시 우회 — Firestore 서버 직접 읽기
   Future<void> _recoverWakeFromFirestore() async {
     try {
-      final dateStr = _studyDate();
-      final records = await FirebaseService()
-          .getTimeRecords()
+      final todaySnap = await FirebaseFirestore.instance
+          .doc(kTodayDoc)
+          .get(const GetOptions(source: Source.server))
           .timeout(const Duration(seconds: 5));
-      final tr = records[dateStr];
-      if (tr?.wake != null) {
+      if (!todaySnap.exists) return;
+      final data = todaySnap.data() ?? {};
+      final tr = data['timeRecords'];
+      if (tr is Map && tr['wake'] != null) {
         _routine.setState(DayState.awake);
         await _routine.saveState();
         _routine.startWakeReminder();
         BusService().startPolling();
-        _log('Firestore 기상 복원: ${tr!.wake} → awake');
+        _log('Firestore 기상 복원: ${tr['wake']} → awake');
       }
     } catch (e) {
       _log('기상 복원 실패 (무시): $e');

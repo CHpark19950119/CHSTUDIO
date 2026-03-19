@@ -41,6 +41,8 @@ function getConfig() {
     accessId: process.env.TUYA_ACCESS_ID || "",
     accessSecret: process.env.TUYA_ACCESS_SECRET || "",
     deviceId: process.env.TUYA_DEVICE_ID || "",
+    mmwaveId: process.env.TUYA_MMWAVE_DEVICE_ID || "",
+    plug16aId: process.env.TUYA_PLUG_16A_DEVICE_ID || "",
   };
 }
 
@@ -94,6 +96,40 @@ async function getDeviceStatus(accessId, accessSecret, token, deviceId) {
 
   if (!data.success) throw new Error("Status: " + JSON.stringify(data));
   return data.result;
+}
+
+// ═══ Tuya POST 명령 전송 (소켓 ON/OFF 등) ═══
+async function sendTuyaCommand(accessId, accessSecret, token, deviceId, commands) {
+  const t = Date.now().toString();
+  const path = "/v1.0/devices/" + deviceId + "/commands";
+  const body = JSON.stringify({commands});
+  const sign = tuyaSign(accessId, accessSecret, t, token, "POST", path, body);
+  const {data} = await axios.post(TUYA_BASE + path, body, {
+    headers: {
+      client_id: accessId,
+      access_token: token,
+      sign,
+      t,
+      sign_method: "HMAC-SHA256",
+      "Content-Type": "application/json",
+    },
+  });
+  if (!data.success) console.error("Tuya command fail:", JSON.stringify(data));
+  return data.success;
+}
+
+// ═══ 전등 제어 헬퍼 ═══
+async function setLight(on) {
+  try {
+    const {accessId, accessSecret, plug16aId} = getConfig();
+    if (!plug16aId) return;
+    const token = await getTuyaToken(accessId, accessSecret);
+    const ok = await sendTuyaCommand(accessId, accessSecret, token, plug16aId,
+      [{code: "switch_1", value: on}]);
+    console.log("Light " + (on ? "ON" : "OFF") + ":", ok);
+  } catch (e) {
+    console.error("setLight error:", e.message);
+  }
 }
 
 async function pollDoorLogic() {
@@ -176,7 +212,52 @@ async function pollDoorLogic() {
   let outingTime = null;
   outingTime = await checkMovementPending(doc);
 
-  return {success: true, isOpen: isOpen, stateChanged: stateChanged, wakeTime: wakeTime, outingTime: outingTime, raw: statusArr};
+  // ═══ mmWave presence 폴링 (토큰 재활용) ═══
+  let sleepTime = null;
+  const {mmwaveId} = getConfig();
+  if (mmwaveId) {
+    try {
+      const mmStatus = await getDeviceStatus(accessId, accessSecret, token, mmwaveId);
+      let presenceState = null;
+      let targetDist = null;
+      for (const s of mmStatus) {
+        if (s.code === "presence_state") presenceState = s.value;
+        if (s.code === "target_dis_closest") targetDist = s.value;
+      }
+
+      // Firestore에 presence 상태 기록
+      const iotData = doc.exists ? doc.data() : {};
+      const prevPresence = iotData.presence || {};
+      const presenceUpdate = {
+        state: presenceState,
+        distance: targetDist,
+        lastPolled: admin.firestore.FieldValue.serverTimestamp(),
+        sensorId: "mmwave_room",
+      };
+
+      // stationarySince 추적 — peaceful + 침대 근처(≤200cm) 연속 시작 시점
+      const inBed = presenceState === "peaceful" && targetDist !== null && targetDist <= 200;
+      if (inBed) {
+        // 이전에도 침대 조건이었으면 유지, 아니면 새로 시작
+        const prevInBed = prevPresence.state === "peaceful"
+          && prevPresence.distance !== undefined && prevPresence.distance <= 200;
+        if (!prevPresence.stationarySince || !prevInBed) {
+          presenceUpdate.stationarySince = admin.firestore.FieldValue.serverTimestamp();
+        }
+      } else {
+        presenceUpdate.stationarySince = null;
+      }
+
+      await todayRef.set({presence: presenceUpdate}, {merge: true});
+
+      // ═══ 취침 자동 감지 ═══
+      sleepTime = await checkSleepByPresence(doc, presenceState, prevPresence, targetDist);
+    } catch (e) {
+      console.error("mmWave poll error:", e.message);
+    }
+  }
+
+  return {success: true, isOpen, stateChanged, wakeTime, outingTime, sleepTime, raw: statusArr};
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -314,6 +395,9 @@ async function checkMovementPending(iotDoc) {
     }
   }
 
+  // ═══ 전등 OFF (외출 확정 시) ═══
+  setLight(false);
+
   // movement 타입 업데이트
   const movementUpdate = {
     "movement.pending": false,
@@ -349,6 +433,81 @@ async function checkMovementPending(iotDoc) {
 
   console.log("Outing confirmed:", outTimeStr);
   return outTimeStr;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  취침 자동 감지 — mmWave presence 기반
+//  peaceful + ≤200cm + 23~07시 + 30분 연속 → 취침 확정
+// ═══════════════════════════════════════════════════════════
+
+async function checkSleepByPresence(iotDoc, presenceState, prevPresence, targetDist) {
+  const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const kstHour = kstNow.getUTCHours();
+  const kstMin = kstNow.getUTCMinutes();
+
+  // 시간 조건: 23~07시
+  if (kstHour >= 7 && kstHour < 23) return null;
+
+  // presence 조건
+  if (presenceState !== "peaceful" || targetDist === null || targetDist > 200) return null;
+
+  // bedTime 이미 기록 확인
+  const dateStr = kstStudyDate(kstNow);
+  const todayDoc = await db.doc("users/" + UID + "/data/today").get();
+  const todayData = todayDoc.exists ? todayDoc.data() : {};
+  const todayTr = todayData.timeRecords || {};
+  if (todayTr.bedTime || todayTr[dateStr]?.bedTime) return null;
+
+  // stationarySince 30분 경과 확인
+  const since = prevPresence.stationarySince;
+  if (!since || !since.toDate) return null;
+  const sinceTime = since.toDate();
+  const elapsedMin = (Date.now() - sinceTime.getTime()) / (1000 * 60);
+  if (elapsedMin < 30) return null;
+
+  // ═══ 취침 확정 ═══
+  const timeStr = String(kstHour).padStart(2, "0") + ":" + String(kstMin).padStart(2, "0");
+
+  // 1. 전등 OFF
+  setLight(false);
+
+  // 2. bedTime 듀얼라이트
+  const studySleepUpdate = {timeRecords: {}};
+  studySleepUpdate.timeRecords[dateStr] = {bedTime: timeStr};
+  const todayRef = db.doc("users/" + UID + "/data/today");
+  await Promise.all([
+    todayRef.update({"timeRecords.bedTime": timeStr, "date": dateStr})
+      .catch(() => todayRef.set({timeRecords: {bedTime: timeStr}, date: dateStr}, {merge: true})),
+    db.doc("users/" + UID + "/data/study").set(studySleepUpdate, {merge: true}),
+  ]);
+
+  // 3. stationarySince 리셋 (재감지 방지)
+  await db.doc("users/" + UID + "/data/iot").update({"presence.stationarySince": null});
+
+  // 4. 텔레그램
+  const msg = "🛏️ 자동 취침 " + timeStr;
+  await Promise.all([
+    axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+      {chat_id: MY_CHAT_ID, text: msg}).catch(() => {}),
+    axios.post("https://api.telegram.org/bot" + GF_BOT_TOKEN + "/sendMessage",
+      {chat_id: GF_CHAT_ID, text: msg}).catch(() => {}),
+  ]);
+
+  // 5. FCM → 앱 sleeping 전환
+  const iotData = iotDoc.exists ? iotDoc.data() : {};
+  if (iotData.fcmToken) {
+    try {
+      await admin.messaging().send({
+        token: iotData.fcmToken,
+        data: {type: "sleep", time: timeStr},
+        notification: {title: "🛏️ 취침", body: "자동 취침 " + timeStr},
+        android: {priority: "high", notification: {channelId: "cheonhong_sleep"}},
+      });
+    } catch (e) { console.error("FCM sleep error:", e.message); }
+  }
+
+  console.log("Sleep recorded:", timeStr);
+  return timeStr;
 }
 
 // Scheduled: every 1 minute
@@ -417,6 +576,12 @@ async function handleReturnHome(movement, iotData) {
   const todayTr = todayData.timeRecords || {};
   if (todayTr.returnHome || todayTr[dateStr]?.returnHome) return;
 
+  // ═══ 전등 ON (귀가 시) — bedTime 기록 시 스킵(화장실), 낮 스킵 ═══
+  const bedTimeRecorded = todayTr.bedTime || todayTr[dateStr]?.bedTime;
+  if (!bedTimeRecorded && kstNow.getUTCHours() >= 18) {
+    setLight(true);
+  }
+
   // ★ FIX: today=flat, study=nested 분리 쓰기
   const studyReturnUpdate = {timeRecords: {}};
   studyReturnUpdate.timeRecords[dateStr] = {returnHome: returnTime};
@@ -471,6 +636,9 @@ async function handleGeofenceOuting(movement, iotData) {
   const todayData = todayDoc.exists ? todayDoc.data() : {};
   const todayTr = todayData.timeRecords || {};
   if (todayTr.outing || todayTr[dateStr]?.outing) return;
+
+  // ═══ 전등 OFF (외출 시) ═══
+  setLight(false);
 
   // ★ FIX: today=flat, study=nested 분리 쓰기
   const studyGeoUpdate = {timeRecords: {}};
@@ -585,6 +753,11 @@ async function buildHedwigMessage(timeRecord, lastLocation, movement) {
 
   const wake = timeRecord && timeRecord.wake;       // "HH:mm"
   const wokeToday = !!wake;
+
+  // 0. bedTime 기록 있으면 확실히 자고 있는 상태
+  if (timeRecord && timeRecord.bedTime) {
+    return "💤 자고 있어요... 쉿!\n🦉 헤드위그 🪶";
+  }
 
   // 1. 수면 (11PM~7AM + 오늘 Wake 미발생)
   if ((kstHour >= 23 || kstHour < 7) && !wokeToday) {

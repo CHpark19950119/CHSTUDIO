@@ -63,6 +63,11 @@ Future<void> onFcmBackgroundMessage(RemoteMessage message) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('nfc_state', 'outing');
     await prefs.setString('nfc_state_date', _todayKey());
+  } else if (type == 'sleep') {
+    // CF mmWave 취침 감지 → DayState = sleeping
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('nfc_state', 'sleeping');
+    await prefs.setString('nfc_state_date', _todayKey());
   }
 }
 
@@ -259,6 +264,8 @@ class FcmService {
       DayService().forceState(DayState.outing);
     } else if (type == 'returnHome') {
       DayService().forceState(DayState.returned);
+    } else if (type == 'sleep') {
+      DayService().triggerAutoSleep(DateTime.now());
     }
   }
 

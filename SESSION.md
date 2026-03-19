@@ -4,63 +4,32 @@
 
 ## 마지막 세션
 - **날짜**: 2026-03-19
-- **버전**: v10.14.0 (미반영, 커밋만)
-- **커밋**: `ac6d286` feat: 크리처 알람 v2 + 데이터 무결성 + 습관 확장 + UI 개선
+- **버전**: v10.14.0
+- **커밋**: `3bcd50c` fix: 자동 기상 감지 — 센서 극성 반전 수정 + openedToday 플래그 + 앱 복원
 
 ## 이번 세션 완료 작업
 
-### 1. 크리처 알람 시스템 v2
-- 분기 이벤트 4개: homeDayConfirm, autoWakeConfirm, studyEndConfirm, lateMealReminder
-- 크리처 무드: neutral/worried/curious/proud/sleepy + 오버레이 색상 변화
-- 메시지 뱅크: SafetyCheck별 3개 한국어 랜덤 (creature_mood.dart)
+### 자동 기상 감지 수정 (CF + App)
+- **센서 극성 반전 수정**: Tuya `doorcontact_state` true=open, false=closed (기존 반대였음)
+- **`openedToday` 플래그**: 7시 전 문 열림 → 7시 폴링에서 즉시 기상 감지
+- **`firstOpenTime` 기록**: 첫 문 열림 시간을 기상 시간으로 사용 (7시 이전이면 현재 시간)
+- **FCM notification 페이로드**: data-only → notification 추가 (Android Doze 우회)
+- **앱 Firestore 복원**: DayService 초기화 시 state==idle이면 Firestore에서 wake 기록 확인 → 자동 awake
 
-### 2. 데이터 무결성 가디언
-- TimeRecord.validate() — 포맷/순서 검증 → 포맷에러 시 쓰기 차단
-- Write-back verify — 3초 후 서버 읽기 비교 → 재시도
-- 듀얼 문서 동기화 — study↔today doc 비교 → lastModified 기준 복구
-- 캐시 신선도 — 30분+ → 서버 리프레시
-
-### 3. DataAuditService (신규)
-- 앱 시작 1일 1회: TimeRecord 정리, 듀얼 문서 동기화, 14일+ 데이터 삭제, OrderData 중복 감지
-- `runForced()` — 설정 화면에서 수동 실행 가능
-
-### 4. 쓰기 보호 강화
-- silent `.catchError((_) {})` 6곳 → debugPrint 로깅
-- Order `_save()` 뮤텍스 + 큐잉 (동시 쓰기 방지)
-- Rollover 중복 방지 (`_rollingOver` 플래그 + date 먼저 마킹)
-
-### 5. 칩거 모드 연결 + 토글
-- SafetyNet homeDayConfirm → Firestore noOuting → DayService notify → 홈 UI 전환
-- 칩거 배너에 X 버튼 (수동 해제)
-- rollover 시 자동 리셋
-
-### 6. 진행도 1차/2차 탭 분리
-- 기존 칩 필터 → TabBar (전체 | 1차 PSAT | 2차 전공)
-- 1차/2차 탭: 라운드 요약 카드 + 과목별 미니카드 그리드
-
-### 7. 습관 autoTrigger 확장
-- 트리거 종류: wake, sleep + study, outing, meal (5개)
-- 시간 조건부: triggerTime 설정 시 해당 시간에 조건 체크
-- UI: 오토뱃지 (⚡📚공부 22:00), 시트에 트리거 6칩 + 시간 피커
-
-### 8. 데일리로그 공부→포커스/휴식 세분화
-- FocusCycle 데이터로 studyStart~studyEnd 구간 분할
-- 포커스 세션 = "공부📖", 나머지 = "휴식☕"
-
-### 9. 오더 목표 컴팩트 뷰
-- 카드 높이 절반 (제목+D-Day+%+프로그레스바 2줄)
+### 이전 세션 미반영분 (SESSION.md 갱신)
+- FirestoreWriteQueue 중앙 쓰기 큐 도입 (`a23e4b3`)
+- WriteQueue 잔여 마이그레이션 + 사일런트 에러 로깅 (`742a935`)
+- 에셋 경량화 + 디자인 상수 + 미사용 패키지 제거 (`297cb8a`)
 
 ## 미커밋 파일
 - `CODEMAGIC_BUILD.md` (untracked, 이전 세션)
 
 ## 결정사항
+- Tuya 웹훅 전환은 불필요 — 1분 폴링 + 극성 수정으로 충분
 - 투두→진행도 목표 연결 UI — 보류 (별로)
-- 칩거 감지 기준: 기상 후 3시간(180분)
-- 데일리로그: 포커스 외 시간 = "휴식" (공부 아님)
 
 ## 다음 할 일
-- [ ] CHANGELOG.md 업데이트 (v10.14.0)
-- [ ] 폰 테스트 후 버그 수정
+- [ ] 내일 아침 자동 기상 테스트 (극성 수정 확인)
 - [ ] DataAuditService 설정 화면 연동 (수동 실행 버튼)
 - [ ] Codemagic CI 검증
 
