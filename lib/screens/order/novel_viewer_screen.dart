@@ -101,16 +101,12 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
 
   Future<void> _load() async {
     try {
-      // 전반(ch 1-5) + 후반(ch 6-11) 분리 로딩
-      final html1 =
-          await rootBundle.loadString('assets/허락_전반_01-05.html');
-      final html2 =
-          await rootBundle.loadString('assets/허락_후반_06-11.html');
+      // v4 단일 파일 로딩
+      final html =
+          await rootBundle.loadString('assets/roadmap/허락_제1부_흙_v4.html');
 
-      final cover = _parseCover(html1);
-      final ch1 = _parseChapters(html1);
-      final ch2 = _parseChapters(html2);
-      final chapters = [...ch1, ...ch2];
+      final cover = _parseCover(html);
+      final chapters = _parseChapters(html);
 
       if (!mounted) return;
       _tabCtrl.dispose();
