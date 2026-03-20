@@ -576,18 +576,20 @@ class _CalendarScreenState extends State<CalendarScreen>
           color: isSelected
             ? _accent.withOpacity(_dk ? 0.15 : 0.08)
             : isHomeDay
-              ? const Color(0xFF5B7ABF).withOpacity(_dk ? 0.08 : 0.05)
+              ? const Color(0xFF5B7ABF).withOpacity(_dk ? 0.15 : 0.10)
               : _dk ? Colors.white.withOpacity(0.02) : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
               ? _accent.withOpacity(0.5)
-              : isToday
-                ? _accent.withOpacity(0.3)
-                : (hasPlanExam)
-                  ? const Color(0xFFEF4444).withOpacity(0.25)
-                  : _border.withOpacity(0.1),
-            width: isSelected ? 2 : isToday ? 1.5 : (hasPlanExam) ? 1 : 0.5),
+              : isHomeDay
+                ? const Color(0xFF5B7ABF).withOpacity(0.4)
+                : isToday
+                  ? _accent.withOpacity(0.3)
+                  : (hasPlanExam)
+                    ? const Color(0xFFEF4444).withOpacity(0.25)
+                    : _border.withOpacity(0.1),
+            width: isSelected ? 2 : isHomeDay ? 1.5 : isToday ? 1.5 : (hasPlanExam) ? 1 : 0.5),
           boxShadow: isSelected ? [
             BoxShadow(color: _accent.withOpacity(0.1), blurRadius: 8)
           ] : null,
@@ -693,17 +695,14 @@ class _CalendarScreenState extends State<CalendarScreen>
                       borderRadius: BorderRadius.circular(1))),
                 // 하단: 과목 바 + 인디케이터
                 if (subjectMinutes.isNotEmpty) _buildSubjectBar(subjectMinutes),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  if (isHomeDay) _dot(const Color(0xFF5B7ABF)),
-                  if (hasMemo) _dot(const Color(0xFFF59E0B)),
-                  if (hasJournal) _dot(const Color(0xFF10B981)),
-                  if (_monthTodoRates.containsKey(dateStr))
+                if (_monthTodoRates.containsKey(dateStr))
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     _dot(_monthTodoRates[dateStr]! >= 0.8
                       ? const Color(0xFF10B981)
                       : _monthTodoRates[dateStr]! >= 0.5
                         ? const Color(0xFFF59E0B)
                         : const Color(0xFFEF4444)),
-                ]),
+                  ]),
               ],
             ),
           ),
@@ -732,9 +731,9 @@ class _CalendarScreenState extends State<CalendarScreen>
   }
 
   Widget _dot(Color c) => Container(
-    width: 4, height: 4,
-    margin: const EdgeInsets.symmetric(horizontal: 1),
-    decoration: BoxDecoration(shape: BoxShape.circle, color: c.withOpacity(0.7)));
+    width: 5, height: 5,
+    margin: const EdgeInsets.symmetric(horizontal: 1.5),
+    decoration: BoxDecoration(shape: BoxShape.circle, color: c.withOpacity(0.85)));
 
   // ══════════════════════════════════════════
   //  ★ 1-C Fix: 월간 요약 — 프로그레스바 명확화
