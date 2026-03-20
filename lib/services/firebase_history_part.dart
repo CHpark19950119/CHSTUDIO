@@ -20,6 +20,37 @@ extension FirebaseHistoryOps on FirebaseService {
     return result;
   }
 
+  /// 어제 bedTime 조회 (수면시간 계산용)
+  Future<String?> getPrevBedTime(String yesterdayDate) async {
+    try {
+      // 1. study doc에서 어제 timeRecords 확인
+      final data = await getStudyData();
+      if (data != null) {
+        final tr = data['timeRecords'] as Map<String, dynamic>?;
+        if (tr != null && tr[yesterdayDate] != null) {
+          final dayTr = Map<String, dynamic>.from(tr[yesterdayDate] as Map);
+          if (dayTr['bedTime'] != null) return dayTr['bedTime'] as String;
+        }
+      }
+      // 2. history doc fallback
+      final parts = yesterdayDate.split('-');
+      final monthKey = '${parts[0]}-${parts[1]}';
+      final dayKey = parts[2];
+      final histDoc = await _cachedDocGet('hist_$monthKey', 'users/$kUid/history/$monthKey');
+      if (histDoc != null) {
+        final days = histDoc['days'] as Map<String, dynamic>?;
+        if (days != null && days[dayKey] != null) {
+          final dayData = Map<String, dynamic>.from(days[dayKey] as Map);
+          final tr = dayData['timeRecords'] as Map<String, dynamic>?;
+          if (tr != null && tr['bedTime'] != null) return tr['bedTime'] as String;
+        }
+      }
+    } catch (e) {
+      debugPrint('[Firebase] getPrevBedTime: $e');
+    }
+    return null;
+  }
+
   Future<void> updateTodayField(String field, dynamic value) async {
     LocalCacheService().markWrite();
     _todayCache2 ??= {};

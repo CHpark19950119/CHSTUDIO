@@ -62,11 +62,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String? _wake, _studyStart, _studyEnd;
   String? _outing, _returnHome;
   String? _bedTime;
+  String? _prevBedTime; // 어제 취침 (수면시간 계산용)
   String? _mealStart, _mealEnd;
   int? _outingMinutes;
   int _effMin = 0;
   WeatherData? _weatherData;
   bool _noOuting = false; // ★ v10: 외출 안하는 날 (수동)
+
+  /// 수면시간 라벨 (어제 bedTime ~ 오늘 wake)
+  String? get _sleepDurationLabel {
+    if (_wake == null || _prevBedTime == null) return null;
+    try {
+      final wp = _wake!.split(':').map(int.parse).toList();
+      final bp = _prevBedTime!.split(':').map(int.parse).toList();
+      final wakeMin = wp[0] * 60 + wp[1];
+      var bedMin = bp[0] * 60 + bp[1];
+      // bedTime이 wake보다 크면 전날 (예: 23:30 → 07:00)
+      var diff = wakeMin - bedMin;
+      if (diff <= 0) diff += 24 * 60;
+      final h = diff ~/ 60;
+      final m = diff % 60;
+      return m > 0 ? '${h}h${m}m' : '${h}h';
+    } catch (_) { return null; }
+  }
 
   /// ★ 집 홈데이 자동 감지: 기상 후 3시간+ 외출 없음 OR 수동 _noOuting
   bool get _isHomeDay {
@@ -381,6 +399,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // ★ DayService movement times 보존 (Firestore에 없어도 iot 기반 즉시 반영)
       _preserveNfcMovementTimes();
       _safeSetState(() {});
+    });
+
+    // ═══ 2.5단계: 어제 bedTime (수면시간 계산용) ═══
+    _tryRefresh('prevBed', () async {
+      final prevBed = await fb.getPrevBedTime(yesterday);
+      if (prevBed != null) _safeSetState(() => _prevBedTime = prevBed);
     });
 
     // ═══ 3단계: 외부 서비스 (각각 독립, 실패 무관) ═══

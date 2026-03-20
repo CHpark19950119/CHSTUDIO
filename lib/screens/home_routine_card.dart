@@ -61,6 +61,12 @@ extension _HomeRoutineCard on _HomeScreenState {
               backgroundColor: _dk ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
               valueColor: AlwaysStoppedAnimation(_accent)))),
           const SizedBox(width: 8),
+          if (_sleepDurationLabel != null) ...[
+            Text('😴 $_sleepDurationLabel', style: TextStyle(
+              fontSize: 9, fontWeight: FontWeight.w600,
+              color: const Color(0xFF6B5DAF).withOpacity(0.8))),
+            const SizedBox(width: 6),
+          ],
           Text('$done/${items.length}', style: TextStyle(
             fontSize: 9, fontWeight: FontWeight.w700, color: _textMuted)),
         ]),
