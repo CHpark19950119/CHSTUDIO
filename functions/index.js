@@ -132,7 +132,7 @@ function medianOf(arr) {
 }
 
 // ═══ 침대/책상 임계값 (Firestore iot.config.bedThresholdCm 오버라이드 가능) ═══
-const DEFAULT_BED_THRESHOLD = 120; // cm
+const DEFAULT_BED_THRESHOLD = 220; // cm (침대 ~150, 책상 300+)
 
 // ═══ Tuya POST 명령 전송 (소켓 ON/OFF 등) ═══
 async function sendTuyaCommand(accessId, accessSecret, token, deviceId, commands) {

@@ -362,8 +362,8 @@ extension _HomeRoutineCard on _HomeScreenState {
           final data = snap.data!.data() as Map<String, dynamic>? ?? {};
           final presence = data['presence'] as Map<String, dynamic>?;
           final config = data['config'] as Map<String, dynamic>?;
-          // ★ configurable 임계값 (Firestore iot.config.bedThresholdCm, 기본 120)
-          final bedThreshold = (config?['bedThresholdCm'] as num?)?.toInt() ?? 120;
+          // ★ configurable 임계값 (Firestore iot.config.bedThresholdCm, 기본 220)
+          final bedThreshold = (config?['bedThresholdCm'] as num?)?.toInt() ?? 220;
           if (presence != null) {
             final state = presence['state'] as String? ?? 'unknown';
             // ★ 필터된 거리 우선, fallback raw distance
