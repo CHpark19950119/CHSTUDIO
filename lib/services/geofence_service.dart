@@ -86,6 +86,20 @@ class GeofenceService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 외부에서 외출 알림 (NFC/빅스비 등) → GPS 폴링 시작
+  void notifyLeftHome() {
+    if (!_enabled || !hasHome) return;
+    if (!_isHome) return; // 이미 외출 상태
+    _isHome = false;
+    _saveIsHome(false);
+    _exitCount = 0;
+    _enterCount = 0;
+    _controller.add(false); // EXIT 이벤트
+    _startTimer();
+    debugPrint('[Geofence] notifyLeftHome → GPS polling started');
+    notifyListeners();
+  }
+
   void _startTimer() {
     _stopTimer();
     // ★ 집에 있으면 GPS 폴링 안 함 — 외출 시에만 작동 (v10.14.7)

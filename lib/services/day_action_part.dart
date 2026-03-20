@@ -112,6 +112,7 @@ extension _DayActionHandlers on DayService {
         await _routine.saveState();
         _routine.cancelReminders();
         BusService().stopPolling();
+        GeofenceService().notifyLeftHome(); // ★ GPS 귀가 감지 시작
         TelegramService().sendNfc('🚶 외출 $tgTime$loc');
         _notifyNative(title: '외출', body: '외출 $tgTime');
         _emitAction('outing_start', '🚪', '외출 $tgTime$loc');
