@@ -73,7 +73,7 @@ class CradleService {
     _unstableCount = 0;
     try {
       _sub = accelerometerEventStream(
-        samplingPeriod: const Duration(milliseconds: 200),
+        samplingPeriod: const Duration(seconds: 2),
       ).listen(
         _onAccelEvent,
         onError: (e) => debugPrint('[Cradle] sensor error: $e'),
