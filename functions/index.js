@@ -1309,6 +1309,23 @@ const AI_TOOLS = [
       required: ["device"],
     },
   },
+  {
+    name: "audit_today",
+    description: "오늘 기록 감사. timeRecords(기상/외출/귀가/취침), IoT 로그, 이상 데이터 감지. 빠진 시간, 순서 역전, 의심 데이터 보고",
+    input_schema: {type: "object", properties: {}, required: []},
+  },
+  {
+    name: "fix_timerecord",
+    description: "timeRecords 시간 수정. 예: wake를 09:00으로 변경, bedTime 삭제(null)",
+    input_schema: {
+      type: "object",
+      properties: {
+        field: {type: "string", enum: ["wake", "outing", "returnHome", "study", "studyEnd", "bedTime", "meal"], description: "수정할 필드"},
+        value: {type: "string", description: "새 값 (HH:mm 형식). 삭제하려면 'null'"},
+      },
+      required: ["field", "value"],
+    },
+  },
 ];
 
 const AI_SYSTEM = `너는 CHEONHONG STUDIO 앱의 AI 비서야. 사용자(천홍)의 공부/루틴/IoT를 관리해.
@@ -1322,7 +1339,9 @@ IoT 기기:
 - 16A 소켓(plug_16a): 방 전등(천장) ON/OFF
 - 20A 소켓(plug_20a): 책상 스탠드 ON/OFF
 
-"센서 상태" → iot_status, "전등 상태" → query_sensor(plug_16a)`;
+"센서 상태" → iot_status, "전등 상태" → query_sensor(plug_16a)
+"기록 확인" / "감사" → audit_today로 이상 데이터 감지 후 사용자에게 보고.
+시간 수정 요청 시 반드시 사용자 확인 후 fix_timerecord 실행. 절대 자동 수정 금지.`;
 
 // ── tool 실행 ──
 
@@ -1517,6 +1536,92 @@ async function executeTool(name, input) {
       result += "  " + s.code + ": " + s.value + "\n";
     }
     return result;
+  }
+
+  if (name === "audit_today") {
+    const [todayDoc, iotDoc] = await Promise.all([
+      db.doc("users/" + UID + "/data/today").get(),
+      db.doc("users/" + UID + "/data/iot").get(),
+    ]);
+    const today = todayDoc.exists ? todayDoc.data() : {};
+    const tr = today.timeRecords || {};
+    const iot = iotDoc.exists ? iotDoc.data() : {};
+    const door = iot.door || {};
+    const presence = iot.presence || {};
+
+    let report = "🔍 오늘 기록 감사\n\n";
+
+    // 1. timeRecords 현황
+    report += "📋 timeRecords:\n";
+    const fields = ["wake", "outing", "returnHome", "study", "studyEnd", "meal", "bedTime"];
+    for (const f of fields) {
+      report += "  " + f + ": " + (tr[f] || "❌ 미기록") + "\n";
+    }
+
+    // 2. 이상 감지
+    const issues = [];
+
+    // 순서 역전 체크
+    const timeToMin = (t) => { const p = (t || "").split(":").map(Number); return p[0] * 60 + p[1]; };
+    if (tr.wake && tr.outing && timeToMin(tr.wake) > timeToMin(tr.outing)) {
+      issues.push("⚠️ 기상(" + tr.wake + ") > 외출(" + tr.outing + ") 순서 역전");
+    }
+    if (tr.outing && tr.returnHome && timeToMin(tr.outing) > timeToMin(tr.returnHome)) {
+      issues.push("⚠️ 외출(" + tr.outing + ") > 귀가(" + tr.returnHome + ") 순서 역전");
+    }
+    if (tr.wake && tr.bedTime && timeToMin(tr.wake) > timeToMin(tr.bedTime)) {
+      issues.push("⚠️ 기상(" + tr.wake + ") > 취침(" + tr.bedTime + ") 순서 역전");
+    }
+
+    // 기상 시간 의심 (11시 이후)
+    if (tr.wake && timeToMin(tr.wake) > 660) {
+      issues.push("🤔 기상 " + tr.wake + " — 11시 이후, 실제 기상 시간 맞는지 확인 필요");
+    }
+
+    // 도어 첫 열림 vs 기상 시간 차이
+    if (door.firstOpenTime && tr.wake) {
+      const doorMin = timeToMin(door.firstOpenTime);
+      const wakeMin = timeToMin(tr.wake);
+      if (Math.abs(doorMin - wakeMin) > 30) {
+        issues.push("🚪 문 첫 열림 " + door.firstOpenTime + " vs 기상 " + tr.wake + " — " + Math.abs(doorMin - wakeMin) + "분 차이");
+      }
+    }
+
+    // 기상 미기록 (현재 7시 이후인데)
+    const kstH = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
+    if (!tr.wake && kstH >= 10) {
+      issues.push("❌ 기상 미기록 (현재 " + kstH + "시)");
+    }
+
+    // 3. IoT 상태
+    report += "\n🏠 IoT 현재:\n";
+    report += "  🚪 문: " + (door.state || "?") + " (첫열림: " + (door.firstOpenTime || "없음") + ")\n";
+    report += "  📡 mmWave: " + (presence.state || "?") + " " + (presence.filteredDistance || presence.distance || "?") + "cm\n";
+
+    if (issues.length > 0) {
+      report += "\n⚠️ 이상 감지 " + issues.length + "건:\n" + issues.join("\n");
+    } else {
+      report += "\n✅ 이상 없음";
+    }
+
+    return report;
+  }
+
+  if (name === "fix_timerecord") {
+    const val = input.value === "null" ? admin.firestore.FieldValue.delete() : input.value;
+    const displayVal = input.value === "null" ? "삭제" : input.value;
+
+    // today doc (flat)
+    const todayRef = db.doc("users/" + UID + "/data/today");
+    await todayRef.update({["timeRecords." + input.field]: val, "date": dateStr})
+      .catch(() => todayRef.set({timeRecords: {[input.field]: input.value === "null" ? null : input.value}, date: dateStr}, {merge: true}));
+
+    // study doc (nested)
+    const studyUpdate = {timeRecords: {}};
+    studyUpdate.timeRecords[dateStr] = {[input.field]: input.value === "null" ? null : input.value};
+    await db.doc("users/" + UID + "/data/study").set(studyUpdate, {merge: true});
+
+    return "✏️ " + input.field + " → " + displayVal + " (today + study 반영)";
   }
 
   return "⚠️ 알 수 없는 도구: " + name;
