@@ -8,6 +8,7 @@ import 'theme/botanical_theme.dart';
 import 'screens/splash_screen.dart';
 import 'services/sleep_detect_service.dart';
 import 'services/fcm_service.dart';
+import 'services/firebase_service.dart';
 
 /// 글로벌 네비게이터 키 — 서비스에서 오버레이 표시용
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -67,6 +68,10 @@ class _CheonhongAppState extends State<CheonhongApp>
     if (state == AppLifecycleState.resumed) {
       _updateTheme(); // 앱 복귀 시 테마도 갱신
       SleepDetectService().checkPendingSleep().catchError((_) {});
+      // ★ 4AM 날짜 경계 — 앱 resume 시 rollover 체크
+      FirebaseService().checkDayRollover()
+          .timeout(const Duration(seconds: 5))
+          .catchError((_) {});
     }
   }
 

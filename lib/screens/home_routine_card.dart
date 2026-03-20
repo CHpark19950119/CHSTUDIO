@@ -361,17 +361,25 @@ extension _HomeRoutineCard on _HomeScreenState {
         if (snap.hasData && snap.data!.exists) {
           final data = snap.data!.data() as Map<String, dynamic>? ?? {};
           final presence = data['presence'] as Map<String, dynamic>?;
+          final config = data['config'] as Map<String, dynamic>?;
+          // ★ configurable 임계값 (Firestore iot.config.bedThresholdCm, 기본 120)
+          final bedThreshold = (config?['bedThresholdCm'] as num?)?.toInt() ?? 120;
           if (presence != null) {
             final state = presence['state'] as String? ?? 'unknown';
+            // ★ 필터된 거리 우선, fallback raw distance
+            final filtRaw = presence['filteredDistance'];
             final rawDist = presence['distance'];
+            final filtDist = filtRaw is num ? filtRaw.toInt() : null;
             dist = rawDist is int ? rawDist : (rawDist is num ? rawDist.toInt() : null);
+            final zoneDist = filtDist ?? dist;
             final since = presence['stationarySince'];
 
             switch (state) {
               case 'peaceful':
-                emoji = dist != null && dist <= 200 ? '🛏️' : '🪑';
-                label = dist != null && dist <= 200 ? '침대' : '책상';
-                color = dist != null && dist <= 200 ? const Color(0xFF6B5DAF) : BotanicalColors.primary;
+                final isBed = zoneDist != null && zoneDist <= bedThreshold;
+                emoji = isBed ? '🛏️' : '🪑';
+                label = isBed ? '침대' : '책상';
+                color = isBed ? const Color(0xFF6B5DAF) : BotanicalColors.primary;
                 break;
               case 'presence':
                 emoji = '🚶';
@@ -389,7 +397,8 @@ extension _HomeRoutineCard on _HomeScreenState {
                 color = _textMuted;
             }
 
-            if (since != null && since is Timestamp && state == 'peaceful' && dist != null && dist <= 200) {
+            if (since != null && since is Timestamp && state == 'peaceful'
+                && zoneDist != null && zoneDist <= bedThreshold) {
               final elapsed = DateTime.now().difference(since.toDate());
               final min = elapsed.inMinutes;
               timerStr = min < 60 ? '${min}분째' : '${min ~/ 60}h ${min % 60}m째';

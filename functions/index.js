@@ -98,6 +98,42 @@ async function getDeviceStatus(accessId, accessSecret, token, deviceId) {
   return data.result;
 }
 
+// ═══ Tuya 디바이스 이벤트 로그 조회 (DP report) ═══
+// 1분 폴링으로 놓치는 짧은 이벤트(문 열림 등)를 로그로 잡음
+async function getDeviceEventLogs(accessId, accessSecret, token, deviceId, startMs, endMs) {
+  const t = Date.now().toString();
+  const path = "/v1.0/devices/" + deviceId + "/logs?start_time=" + startMs
+    + "&end_time=" + endMs + "&type=7&size=50";
+  const sign = tuyaSign(accessId, accessSecret, t, token, "GET", path, "");
+
+  const {data} = await axios.get(TUYA_BASE + path, {
+    headers: {
+      client_id: accessId,
+      access_token: token,
+      sign, t,
+      sign_method: "HMAC-SHA256",
+    },
+    timeout: 10000,
+  });
+
+  if (!data.success) {
+    console.warn("DeviceLogs fail:", JSON.stringify(data));
+    return [];
+  }
+  const result = data.result || {};
+  return result.logs || result.list || [];
+}
+
+// ═══ 거리 중앙값 필터 (노이즈 제거) ═══
+function medianOf(arr) {
+  if (!arr || arr.length === 0) return null;
+  const sorted = [...arr].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+// ═══ 침대/책상 임계값 (Firestore iot.config.bedThresholdCm 오버라이드 가능) ═══
+const DEFAULT_BED_THRESHOLD = 120; // cm
+
 // ═══ Tuya POST 명령 전송 (소켓 ON/OFF 등) ═══
 async function sendTuyaCommand(accessId, accessSecret, token, deviceId, commands) {
   const t = Date.now().toString();
@@ -165,10 +201,9 @@ async function pollDoorLogic() {
   // Get Tuya API token
   const token = await getTuyaToken(accessId, accessSecret);
 
-  // Get device status
+  // Get device status (현재 상태)
   const statusArr = await getDeviceStatus(accessId, accessSecret, token, deviceId);
 
-  // Find door contact state
   let doorContactState = null;
   for (const s of statusArr) {
     if (s.code === "doorcontact_state") {
@@ -180,13 +215,15 @@ async function pollDoorLogic() {
     return {success: false, msg: "doorcontact_state not found", raw: statusArr};
   }
 
-  // Tuya doorcontact_state: true = open (magnet away), false = closed
-  const isOpen = doorContactState;
+  const isOpen = doorContactState; // true = open, false = closed
 
-  // Read current state to detect change
+  // Read IoT doc
   const todayRef = db.doc("users/" + UID + "/data/iot");
   const doc = await todayRef.get();
-  const currentDoor = doc.exists ? (doc.data().door || {}) : {};
+  const iotData = doc.exists ? doc.data() : {};
+  const currentDoor = iotData.door || {};
+  const iotConfig = iotData.config || {};
+  const bedThreshold = iotConfig.bedThresholdCm || DEFAULT_BED_THRESHOLD;
 
   const stateChanged =
     currentDoor.isOpen === undefined || currentDoor.isOpen !== isOpen;
@@ -198,12 +235,11 @@ async function pollDoorLogic() {
     sensorId: "front_door",
   };
 
-  // Only update lastChanged when state actually changes
   if (stateChanged) {
     doorUpdate.lastChanged = admin.firestore.FieldValue.serverTimestamp();
   }
 
-  // ═══ 문 열림 일별 추적 (openedToday) ═══
+  // ═══ 문 열림 일별 추적 — 이벤트 로그 기반 (폴링 놓침 방지) ═══
   const todayDateStr = kstStudyDate();
   const prevOpenedDate = currentDoor.openedDate || "";
 
@@ -214,11 +250,10 @@ async function pollDoorLogic() {
     doorUpdate.firstOpenTime = null;
   }
 
-  // 문이 열려있으면 openedToday 설정 (stateChanged 무관 — 이미 열려있는 경우도 포함)
+  // 1) 현재 열려있으면 당연히 openedToday
   if (isOpen) {
     doorUpdate.openedToday = true;
     doorUpdate.openedDate = todayDateStr;
-    // 오늘 첫 열림 시간만 기록
     if (!currentDoor.firstOpenTime || prevOpenedDate !== todayDateStr) {
       const kstT = new Date(Date.now() + 9 * 60 * 60 * 1000);
       doorUpdate.firstOpenTime = String(kstT.getUTCHours()).padStart(2, "0") + ":" +
@@ -226,9 +261,50 @@ async function pollDoorLogic() {
     }
   }
 
+  // 2) ★ 핵심: Tuya 이벤트 로그로 폴링 사이 놓친 문 열림 잡기
+  if (!doorUpdate.openedToday && !(currentDoor.openedToday && prevOpenedDate === todayDateStr)) {
+    try {
+      const now = Date.now();
+      const twoMinAgo = now - 2 * 60 * 1000;
+      const logs = await getDeviceEventLogs(accessId, accessSecret, token, deviceId, twoMinAgo, now);
+
+      let firstOpenTs = null;
+      for (const log of logs) {
+        if (log.code === "doorcontact_state") {
+          // value는 boolean, string, 또는 "true"/"false" 모두 대응
+          const val = log.value === true || log.value === "true";
+          if (val) {
+            const ts = log.event_time || log.time || log.t;
+            if (ts && (!firstOpenTs || ts < firstOpenTs)) firstOpenTs = ts;
+          }
+        }
+      }
+
+      if (firstOpenTs) {
+        doorUpdate.openedToday = true;
+        doorUpdate.openedDate = todayDateStr;
+        if (!currentDoor.firstOpenTime || prevOpenedDate !== todayDateStr) {
+          const kstT = new Date(firstOpenTs + 9 * 60 * 60 * 1000);
+          doorUpdate.firstOpenTime = String(kstT.getUTCHours()).padStart(2, "0") + ":" +
+            String(kstT.getUTCMinutes()).padStart(2, "0");
+        }
+        console.log("Door open caught from event log:", doorUpdate.firstOpenTime);
+      }
+    } catch (e) {
+      console.warn("Door event log check failed (fallback to poll):", e.message);
+    }
+  }
+
+  // 이전 openedToday 보존 (이미 true면 유지)
+  if (currentDoor.openedToday && prevOpenedDate === todayDateStr && !doorUpdate.openedToday) {
+    doorUpdate.openedToday = true;
+    doorUpdate.openedDate = todayDateStr;
+    if (currentDoor.firstOpenTime) doorUpdate.firstOpenTime = currentDoor.firstOpenTime;
+  }
+
   await todayRef.set({door: doorUpdate}, {merge: true});
 
-  // ═══ 기상 감지: 오늘 문 열린 적 있으면 매 폴링마다 체크 ═══
+  // ═══ 기상 감지 ═══
   let wakeTime = null;
   const doorMerged = {...currentDoor, ...doorUpdate};
   if (doorMerged.openedToday) {
@@ -252,8 +328,6 @@ async function pollDoorLogic() {
         if (s.code === "target_dis_closest") targetDist = s.value;
       }
 
-      // Firestore에 presence 상태 기록
-      const iotData = doc.exists ? doc.data() : {};
       const prevPresence = iotData.presence || {};
       const presenceUpdate = {
         state: presenceState,
@@ -262,11 +336,23 @@ async function pollDoorLogic() {
         sensorId: "mmwave_room",
       };
 
-      // stationarySince 추적 — peaceful + 침대 근처(≤200cm) 연속 시작 시점
-      const inBed = presenceState === "peaceful" && targetDist !== null && targetDist <= 200;
+      // ═══ 거리 중앙값 필터 (5개 롤링 윈도우) ═══
+      const prevHistory = prevPresence.distHistory || [];
+      const newHistory = targetDist !== null
+        ? [...prevHistory, targetDist].slice(-5) : prevHistory;
+      presenceUpdate.distHistory = newHistory;
+      const filteredDist = medianOf(newHistory);
+      presenceUpdate.filteredDistance = filteredDist;
+
+      // ═══ zone 판별: 필터된 거리 + configurable 임계값 ═══
+      const zoneDist = filteredDist !== null ? filteredDist : targetDist;
+      const inBed = presenceState === "peaceful" && zoneDist !== null && zoneDist <= bedThreshold;
+
+      // stationarySince 추적 — peaceful + 침대 zone
       if (inBed) {
         const prevInBed = prevPresence.state === "peaceful"
-          && prevPresence.distance !== undefined && prevPresence.distance <= 200;
+          && (prevPresence.filteredDistance || prevPresence.distance) !== undefined
+          && (prevPresence.filteredDistance || prevPresence.distance) <= bedThreshold;
         if (!prevPresence.stationarySince || !prevInBed) {
           presenceUpdate.stationarySince = admin.firestore.FieldValue.serverTimestamp();
         }
@@ -274,7 +360,7 @@ async function pollDoorLogic() {
         presenceUpdate.stationarySince = null;
       }
 
-      // noneSince 추적 — 방 비움 연속 시작 시점
+      // noneSince 추적
       if (presenceState === "none") {
         if (!prevPresence.noneSince || prevPresence.state !== "none") {
           presenceUpdate.noneSince = admin.firestore.FieldValue.serverTimestamp();
@@ -285,10 +371,15 @@ async function pollDoorLogic() {
 
       await todayRef.set({presence: presenceUpdate}, {merge: true});
 
-      // ═══ bedTime 가드 읽기 (전등 자동화용) ═══
+      // ═══ bedTime 가드 + 수면 zone 가드 읽기 ═══
       const todayDoc2 = await db.doc("users/" + UID + "/data/today").get();
       const todayTr2 = (todayDoc2.exists ? todayDoc2.data() : {}).timeRecords || {};
       const hasBedTime = !!(todayTr2.bedTime || todayTr2[kstStudyDate()]?.bedTime);
+      const kstH = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
+      const isNightTime = kstH >= 23 || kstH < 7;
+
+      // ★ 수면 보호: bedTime 기록됨 OR (야간 + 침대 zone) → 전등 자동화 억제
+      const sleepGuard = hasBedTime || (isNightTime && inBed);
 
       // ═══ 방 비움 5분 → 전등 OFF ═══
       if (presenceState === "none" && !hasBedTime) {
@@ -296,26 +387,22 @@ async function pollDoorLogic() {
         if (ns && ns.toDate) {
           const noneMin = (Date.now() - ns.toDate().getTime()) / (1000 * 60);
           if (noneMin >= 5) {
-            // 한 번만 실행 (이전에 이미 꺼졌으면 멱등)
             setLight(false);
             console.log("Room empty 5min → light OFF");
           }
         }
       }
 
-      // ═══ 방 복귀 (none→presence/peaceful) → 전등 ON ═══
-      if (prevPresence.state === "none" && presenceState !== "none" && !hasBedTime) {
-        const kstH = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCHours();
+      // ═══ 방 복귀 → 전등 ON (수면 보호 적용) ═══
+      if (prevPresence.state === "none" && presenceState !== "none" && !sleepGuard) {
         if (kstH >= 18 || kstH < 7) {
           setLight(true);
           console.log("Room entry → light ON");
         }
       }
 
-      // ═══ 책상 스탠드 (20A) — 자동화 비활성 (전원순환=모드변경 스탠드, 호환 불가) ═══
-
-      // ═══ 취침 자동 감지 ═══
-      sleepTime = await checkSleepByPresence(doc, presenceState, prevPresence, targetDist);
+      // ═══ 취침 자동 감지 (필터된 거리 사용) ═══
+      sleepTime = await checkSleepByPresence(doc, presenceState, prevPresence, zoneDist, bedThreshold);
     } catch (e) {
       console.error("mmWave poll error:", e.message);
     }
@@ -504,7 +591,8 @@ async function checkMovementPending(iotDoc) {
 //  peaceful + ≤200cm + 23~07시 + 30분 연속 → 취침 확정
 // ═══════════════════════════════════════════════════════════
 
-async function checkSleepByPresence(iotDoc, presenceState, prevPresence, targetDist) {
+async function checkSleepByPresence(iotDoc, presenceState, prevPresence, zoneDist, bedThreshold) {
+  const thresh = bedThreshold || DEFAULT_BED_THRESHOLD;
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const kstHour = kstNow.getUTCHours();
   const kstMin = kstNow.getUTCMinutes();
@@ -512,8 +600,8 @@ async function checkSleepByPresence(iotDoc, presenceState, prevPresence, targetD
   // 시간 조건: 23~07시
   if (kstHour >= 7 && kstHour < 23) return null;
 
-  // presence 조건
-  if (presenceState !== "peaceful" || targetDist === null || targetDist > 200) return null;
+  // presence 조건 (필터된 거리 + configurable 임계값)
+  if (presenceState !== "peaceful" || zoneDist === null || zoneDist > thresh) return null;
 
   // bedTime 이미 기록 확인
   const dateStr = kstStudyDate(kstNow);
