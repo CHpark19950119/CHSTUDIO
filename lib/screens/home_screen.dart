@@ -1139,7 +1139,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     // 기존 헤더와 동일한 구조, 색상만 인디고
-    return Row(
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1189,7 +1190,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             MaterialPageRoute(builder: (_) => const SettingsScreen())), size: 18),
         ]),
       ],
-    );
+    ),
+    const SizedBox(height: 4),
+    _presenceBadge(),
+    ]);
   }
 
   Widget _headerIconBtn(IconData icon, VoidCallback onTap, {double size = 16}) {
