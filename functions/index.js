@@ -724,11 +724,22 @@ exports.pollDoorSensor = functions.pubsub
 // Manual test endpoint
 exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
   try {
-    // ?q=light&on=true/false → 전등 제어
+    // ?q=light&on=true/false&device=16a/20a → 플러그 제어
     if (req.query.q === "light") {
       const on = req.query.on !== "false";
-      await setLight(on);
-      res.status(200).json({ok: true, light: on ? "ON" : "OFF"});
+      const device = req.query.device || "16a";
+      if (device === "20a") {
+        // 20A: 단순 on/off (스탠드/충전기)
+        const {accessId, accessSecret} = getConfig();
+        const deskPlugId = "ebeaff0f5a69754067yfdv";
+        const token = await getTuyaToken(accessId, accessSecret);
+        await sendTuyaCommand(accessId, accessSecret, token, deskPlugId,
+          [{code: "switch_1", value: on}]);
+        res.status(200).json({ok: true, device: "20a", light: on ? "ON" : "OFF"});
+      } else {
+        await setLight(on);
+        res.status(200).json({ok: true, device: "16a", light: on ? "ON" : "OFF"});
+      }
       return;
     }
     // ?q=date&doc=today/iot → 해당 doc 전체 조회
