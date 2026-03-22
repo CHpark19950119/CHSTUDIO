@@ -281,14 +281,21 @@ async function pollDoorLogic() {
       }
 
       if (firstOpenTs) {
-        doorUpdate.openedToday = true;
-        doorUpdate.openedDate = todayDateStr;
-        if (!currentDoor.firstOpenTime || prevOpenedDate !== todayDateStr) {
-          const kstT = new Date(firstOpenTs + 9 * 60 * 60 * 1000);
-          doorUpdate.firstOpenTime = String(kstT.getUTCHours()).padStart(2, "0") + ":" +
-            String(kstT.getUTCMinutes()).padStart(2, "0");
+        // ★ 4AM 이전 이벤트는 어제 기록 → 무시
+        const kstT = new Date(firstOpenTs + 9 * 60 * 60 * 1000);
+        const evtHour = kstT.getUTCHours();
+        const evtDate = kstStudyDate(kstT);
+        if (evtDate === todayDateStr) {
+          doorUpdate.openedToday = true;
+          doorUpdate.openedDate = todayDateStr;
+          if (!currentDoor.firstOpenTime || prevOpenedDate !== todayDateStr) {
+            doorUpdate.firstOpenTime = String(evtHour).padStart(2, "0") + ":" +
+              String(kstT.getUTCMinutes()).padStart(2, "0");
+          }
+          console.log("Door open caught from event log:", doorUpdate.firstOpenTime);
+        } else {
+          console.log("Door event log ignored — event date " + evtDate + " != today " + todayDateStr);
         }
-        console.log("Door open caught from event log:", doorUpdate.firstOpenTime);
       }
     } catch (e) {
       console.warn("Door event log check failed (fallback to poll):", e.message);
