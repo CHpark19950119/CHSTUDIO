@@ -233,6 +233,14 @@ class BixbyNotificationListener : NotificationListenerService() {
                         "movement.type" to "cancelled"
                     )
                 )
+                // ★ SharedPreferences 상태 복원 (outing → returned)
+                val prefs = applicationContext.getSharedPreferences(
+                    "FlutterSharedPreferences", Context.MODE_PRIVATE
+                )
+                prefs.edit()
+                    .putString("flutter.nfc_state", "returned")
+                    .putString("flutter.nfc_state_date", todayKey())
+                    .apply()
                 stopActivityRecognition()
                 val leftLocal = movement["leftAtLocal"] as? String
                 val dur = calcDuration(leftLocal, returnTime)
