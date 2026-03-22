@@ -8,20 +8,33 @@ import psutil
 import requests
 
 CF_URL = "https://us-central1-cheonhong-studio.cloudfunctions.net/checkDoorManual"
+TG_BOT = "8514127849:AAF8_F7SBfm51SGHtp9X5lva7yexdnFyapo"
+TG_CHAT = "8724548311"
 LOW = 20
 HIGH = 80
 INTERVAL = 300  # 5분
 
 plug_on = None
 
-def set_plug(on: bool):
+def tg(msg: str):
+    try:
+        requests.post(f"https://api.telegram.org/bot{TG_BOT}/sendMessage",
+            json={"chat_id": TG_CHAT, "text": msg}, timeout=10)
+    except:
+        pass
+
+def set_plug(on: bool, reason: str = ""):
     global plug_on
     if plug_on == on:
         return
     try:
         r = requests.get(f"{CF_URL}?q=light&on={'true' if on else 'false'}&device=20a", timeout=15)
         plug_on = on
-        print(f"[Plug] {'ON' if on else 'OFF'}")
+        msg = f"🔋 충전 {'ON' if on else 'OFF'}"
+        if reason:
+            msg += f" — {reason}"
+        print(f"[Plug] {msg}")
+        tg(msg)
     except Exception as e:
         print(f"[Plug] error: {e}")
 
@@ -44,19 +57,15 @@ def check():
     home = is_home()
 
     if home:
-        # 집에 있으면 항상 충전
         if not plug_on:
-            print(f"[Battery] {pct}% — 재실, 충전 ON")
-            set_plug(True)
+            set_plug(True, f"귀가 감지 ({pct}%)")
         return
 
     # 외출 중 → 배터리 관리
     if pct >= HIGH:
-        print(f"[Battery] {pct}% >= {HIGH}% — 외출 중, 충전 OFF")
-        set_plug(False)
+        set_plug(False, f"{pct}% >= {HIGH}%")
     elif pct <= LOW:
-        print(f"[Battery] {pct}% <= {LOW}% — 외출 중, 충전 ON")
-        set_plug(True)
+        set_plug(True, f"{pct}% <= {LOW}%")
     else:
         state = "충전중" if b.power_plugged else "방전중"
         print(f"[Battery] {pct}% ({state}) — 외출 중, 유지")
