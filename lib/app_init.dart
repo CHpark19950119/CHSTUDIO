@@ -57,7 +57,7 @@ class AppInit {
 
     // ── Phase 3: 상태 복원 (병렬, 개별 try-catch) ──
     await Future.wait([
-      FocusService().restoreState().timeout(const Duration(seconds: 8)).catchError((_) {}),
+      FocusService().restoreState().timeout(const Duration(seconds: 8)).catchError((_) => false),
     ]);
 
     // ── Phase 4a: 센서 기반 서비스 (순서 의존: Door → Wake, Geo → NFC) ──

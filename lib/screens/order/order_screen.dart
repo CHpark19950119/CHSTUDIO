@@ -8,7 +8,6 @@ import '../../utils/study_date_utils.dart';
 import 'order_theme.dart';
 import 'order_goals_tab.dart';
 import 'order_expense_tab.dart';
-import 'order_life_tab.dart';
 import '../journey_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════

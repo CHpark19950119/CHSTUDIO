@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
-import '../models/plan_models.dart';
 import '../utils/study_date_utils.dart';
 import 'local_cache_service.dart';
 import 'write_queue_service.dart';

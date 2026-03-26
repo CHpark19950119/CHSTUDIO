@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 /// ═══════════════════════════════════════════════════════════
@@ -112,7 +113,7 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
       _tabCtrl.dispose();
       _tabCtrl = TabController(length: chapters.length, vsync: this);
       _tabCtrl.addListener(_onTabChanged);
-      setState(() {
+      _safeSetState(() {
         _cover = cover;
         _chapters = chapters;
         _loading = false;
@@ -120,14 +121,26 @@ class _NovelViewerScreenState extends State<NovelViewerScreen>
       _fadeCtrl.forward();
     } catch (e) {
       debugPrint('NovelViewer load error: $e');
-      if (!mounted) return;
-      setState(() => _loading = false);
+      _safeSetState(() => _loading = false);
     }
   }
 
   void _onTabChanged() {
     if (_tabCtrl.indexIsChanging) return;
-    setState(() => _currentTab = _tabCtrl.index);
+    _safeSetState(() => _currentTab = _tabCtrl.index);
+  }
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
   }
 
   // ═══════════════════════════════════════

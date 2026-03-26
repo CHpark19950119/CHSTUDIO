@@ -7,7 +7,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import '../theme/botanical_theme.dart';
 import '../models/models.dart';
 import '../services/firebase_service.dart';
-import '../services/focus_service.dart';
 import 'memo_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════

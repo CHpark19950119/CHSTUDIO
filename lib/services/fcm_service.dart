@@ -9,7 +9,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
-import '../models/models.dart';
 import 'day_service.dart';
 
 // ═══════════════════════════════════════════════════════════

@@ -8,8 +8,6 @@ import 'routine_service.dart';
 import 'day_service.dart' show DayState;
 import 'firebase_service.dart';
 import 'geofence_service.dart';
-import 'location_service.dart';
-import 'telegram_service.dart';
 
 /// NFC Action — UI 표시용 (movement에서 발생하는 이벤트)
 class MovementAction {

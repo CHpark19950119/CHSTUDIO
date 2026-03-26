@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../utils/study_date_utils.dart';
 import 'firebase_service.dart';
-import 'local_cache_service.dart';
 
 /// ═══════════════════════════════════════════════════════════
 /// DataAuditService — 앱 시작 시 데이터 무결성 검증 + 자동 복구

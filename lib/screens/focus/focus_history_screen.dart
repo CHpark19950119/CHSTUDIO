@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import '../../theme/botanical_theme.dart';
 import '../../models/models.dart';
 import '../../services/firebase_service.dart';
@@ -38,14 +39,27 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
   }
 
   Future<void> _loadCycles() async {
-    setState(() => _loading = true);
+    _safeSetState(() => _loading = true);
     try {
       _cycles = await _fb.getFocusCycles(_selectedDate);
       _cycles.sort((a, b) => b.startTime.compareTo(a.startTime));
     } catch (_) {
       _cycles = [];
     }
-    if (mounted) setState(() => _loading = false);
+    _safeSetState(() => _loading = false);
+  }
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
+    }
   }
 
   @override

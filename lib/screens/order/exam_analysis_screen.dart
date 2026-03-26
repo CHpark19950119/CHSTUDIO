@@ -4,9 +4,9 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import '../../models/roadmap_models.dart';
-import 'order_life_tab.dart';
 
 /// ═══════════════════════════════════════════════════════════
 /// 공시 분석 — 독립 화면 (Flame 배경 + 다크 프리미엄)
@@ -150,15 +150,26 @@ class _ExamAnalysisScreenState extends State<ExamAnalysisScreen>
       final json = await rootBundle.loadString('assets/roadmap/roadmap_data.json');
       final map = Map<String, dynamic>.from(jsonDecode(json) as Map);
       final roadmap = RoadmapData.fromMap(map);
-      if (mounted) {
-        setState(() {
-          _data = roadmap.examAnalysis;
-          _loading = false;
-        });
-        _fadeCtrl.forward();
-      }
+      _safeSetState(() {
+        _data = roadmap.examAnalysis;
+        _loading = false;
+      });
+      _fadeCtrl.forward();
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      _safeSetState(() => _loading = false);
+    }
+  }
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
     }
   }
 
@@ -525,9 +536,22 @@ class _V9CompareViewerState extends State<_V9CompareViewer> {
   Future<void> _load() async {
     try {
       final section = await rootBundle.loadString('assets/roadmap/그들과나.html');
-      setState(() { _html = section; _loading = false; });
+      _safeSetState(() { _html = section; _loading = false; });
     } catch (e) {
-      setState(() => _loading = false);
+      _safeSetState(() => _loading = false);
+    }
+  }
+
+  void _safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(fn);
+      });
+    } else {
+      setState(fn);
     }
   }
 

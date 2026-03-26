@@ -6,7 +6,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/firebase_service.dart';
-import '../theme/botanical_theme.dart';
 
 /// 3순위: 학습 진행도 화면
 /// Firebase progressGoals 스키마 호환 (웹앱 ↔ Flutter)
