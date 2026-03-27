@@ -21,16 +21,14 @@ plug_on = None
 _last_sync = 0
 SYNC_INTERVAL = 600  # 10분마다 실제 플러그 상태 동기화
 
-# 게임 프로세스 목록 (소문자)
-GAME_PROCESSES = {
-    "tft.exe",
-}
 
 # ═══ Tuya 로컬 제어 설정 ═══
+# 20a(ebee3d9bf2c862c41fpw0j, 101) = 전등 (스탠드)
+# 16a(ebeaff0f5a69754067yfdv, 104) = 충전기
 TUYA_DEVICES = {
-    "20a": {"id": "ebee3d9bf2c862c41fpw0j", "ip": "192.168.219.101", "key": "['NP3>F'CP(/7H':", "ver": 3.5},
-    "16a": {"id": "ebeaff0f5a69754067yfdv", "ip": "192.168.219.104", "key": ">|(blpf;WLCPsLq&", "ver": 3.5},
-    "mmwave": {"id": "eb21426cfb9a18c166v56z", "ip": "192.168.219.113", "key": "uX9-fLcHTxYD=DMt", "ver": 3.5},
+    "charger": {"id": "ebeaff0f5a69754067yfdv", "ip": "192.168.219.104", "key": ">|(blpf;WLCPsLq&", "ver": 3.5},
+    "light":   {"id": "ebee3d9bf2c862c41fpw0j", "ip": "192.168.219.101", "key": "['NP3>F'CP(/7H':", "ver": 3.5},
+    "mmwave":  {"id": "eb21426cfb9a18c166v56z", "ip": "192.168.219.113", "key": "uX9-fLcHTxYD=DMt", "ver": 3.5},
 }
 
 def _tuya_device(name):
@@ -49,7 +47,7 @@ def tg(msg: str):
 def get_actual_plug_state():
     """tinytuya로 실제 20a 플러그 상태 조회 (로컬)"""
     try:
-        dev = _tuya_device("20a")
+        dev = _tuya_device("charger")
         status = dev.status()
         if "dps" in status:
             return status["dps"].get("1", False)
@@ -74,7 +72,7 @@ def set_plug(on: bool, reason: str = ""):
     if plug_on == on:
         return
     try:
-        dev = _tuya_device("20a")
+        dev = _tuya_device("charger")
         if on:
             dev.turn_on()
         else:
@@ -114,20 +112,8 @@ def is_home():
     except:
         return True
 
-def is_gaming():
-    """게임 프로세스 실행 중인지 확인"""
-    try:
-        for p in psutil.process_iter(["name"]):
-            if p.info["name"] and p.info["name"].lower() in GAME_PROCESSES:
-                return True
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
-        pass
-    return False
-
 def should_manage():
-    """배터리 관리 모드: 항상 20~80% 유지 (게임 중만 예외)"""
-    if is_gaming():
-        return False, "게임 중"
+    """배터리 관리 모드: 항상 20~80% 유지"""
     return True, ""
 
 def heartbeat(pct, plugged, gaming):
