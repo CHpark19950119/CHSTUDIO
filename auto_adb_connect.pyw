@@ -13,7 +13,7 @@ import time
 import logging
 from pathlib import Path
 
-PHONE_IP = "100.x.x.x"  # TODO: Tailscale 설정 후 폰 IP로 변경
+PHONE_IP = "100.104.65.71"  # a15 Tailscale IP
 PORT = 5555
 CHECK_INTERVAL = 60  # 초
 
