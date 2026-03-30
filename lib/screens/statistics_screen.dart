@@ -312,7 +312,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final weekAvg = studyDays7 > 0 ? weekTotal ~/ studyDays7 : 0;
     final monthStudyDays = monthData.where((d) => d.minutes > 0 && !d.isRestDay).length;
     final monthTotal = monthData.where((d) => !d.isRestDay).fold<int>(0, (s, d) => s + d.minutes);
-    final monthAvg = monthStudyDays > 0 ? monthTotal ~/ monthStudyDays : 0;
     int bestMin = 0; String bestLabel = '';
     for (final d in weekData) {
       if (!d.isRestDay && d.minutes > bestMin) { bestMin = d.minutes; bestLabel = d.label; }
@@ -2214,97 +2213,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 // ═══════════════════════════════════════════════════════════
 //  Custom Painters
 // ═══════════════════════════════════════════════════════════
-
-class _BarChartPainter extends CustomPainter {
-  final List<_DayStudy> data; final int maxMin; final double progress;
-  final bool isWeekly, dark;
-  final Color accent, primary, gold, border, txtMain, txtMuted;
-  _BarChartPainter({required this.data, required this.maxMin, required this.progress,
-    required this.isWeekly, required this.dark, required this.accent, required this.primary,
-    required this.gold, required this.border, required this.txtMain, required this.txtMuted});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-    final w = size.width; final h = size.height - 24;
-    final barW = w / data.length; final gap = isWeekly ? 8.0 : 2.0;
-
-    // ── 보태니컬 수평 그리드 라인 (점선) ──
-    for (int g = 1; g <= 3; g++) {
-      final gy = h * (1 - g / 4);
-      final gridPaint = Paint()
-        ..color = border.withValues(alpha: 0.12)
-        ..strokeWidth = 0.5;
-      // 점선 효과
-      for (double dx = 0; dx < w; dx += 6) {
-        canvas.drawLine(Offset(dx, gy), Offset(dx + 3, gy), gridPaint);
-      }
-      // 시간 라벨
-      final hrLabel = '${(maxMin * g / 4 / 60).round()}h';
-      final tp = TextPainter(
-        text: TextSpan(text: hrLabel, style: TextStyle(fontSize: 8, color: txtMuted.withValues(alpha: 0.4))),
-        textDirection: TextDirection.ltr)..layout();
-      tp.paint(canvas, Offset(w - tp.width, gy - 10));
-    }
-
-    // ── 영역 채우기 (보태니컬 그라데이션) ──
-    if (data.length > 1) {
-      final areaPath = Path()..moveTo(gap / 2, h);
-      for (int i = 0; i < data.length; i++) {
-        final barH = maxMin > 0 ? (data[i].minutes / maxMin * h * 0.85 * progress).clamp(0.0, h * 0.85) : 0.0;
-        final x = i * barW + barW / 2;
-        if (i == 0) areaPath.lineTo(x, h - barH);
-        else areaPath.lineTo(x, h - barH);
-      }
-      areaPath.lineTo((data.length - 1) * barW + barW / 2, h);
-      areaPath.close();
-      canvas.drawPath(areaPath, Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [primary.withValues(alpha: 0.08), primary.withValues(alpha: 0.0)],
-        ).createShader(Rect.fromLTWH(0, 0, w, h)));
-    }
-
-    // ── 바 렌더링 ──
-    for (int i = 0; i < data.length; i++) {
-      final d = data[i];
-      final barH = maxMin > 0 ? (d.minutes / maxMin * h * 0.85 * progress).clamp(2.0, h * 0.85) : 2.0;
-      final x = i * barW + gap / 2; final bw = barW - gap;
-      final isToday = i == data.length - 1 && isWeekly;
-      final isRest = d.isRestDay; // ★ 쉬는날
-      final rect = RRect.fromRectAndRadius(Rect.fromLTWH(x, h - barH, bw, barH), Radius.circular(isWeekly ? 6 : 3));
-      if (isRest) {
-        // ★ 쉬는날: 점선 패턴 느낌의 반투명 바
-        canvas.drawRRect(rect, Paint()..color = border.withValues(alpha: 0.3));
-        // 쉬는날 마커
-        final restTp = TextPainter(text: TextSpan(text: '😴', style: const TextStyle(fontSize: 10)),
-          textDirection: TextDirection.ltr)..layout();
-        restTp.paint(canvas, Offset(x + bw / 2 - restTp.width / 2, h - barH - 14));
-      } else if (d.minutes > 0) {
-        final colors = isToday ? [gold, gold.withValues(alpha: 0.6)] : [primary, primary.withValues(alpha: 0.5)];
-        canvas.drawRRect(rect, Paint()..shader = LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: colors).createShader(rect.outerRect));
-        if (isToday) canvas.drawRRect(rect, Paint()..color = gold.withValues(alpha: 0.15 * progress)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
-      } else {
-        canvas.drawRRect(rect, Paint()..color = border.withValues(alpha: 0.5));
-      }
-      final showLabel = isWeekly || i % 5 == 0 || i == data.length - 1;
-      if (showLabel) {
-        final tp = TextPainter(text: TextSpan(text: d.label,
-          style: TextStyle(fontSize: isWeekly ? 11 : 8, fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-            color: isToday ? accent : txtMuted)), textDirection: TextDirection.ltr)..layout();
-        tp.paint(canvas, Offset(x + bw / 2 - tp.width / 2, h + 6));
-      }
-      if (d.minutes > 0 && isWeekly) {
-        final tp = TextPainter(text: TextSpan(text: '${d.minutes ~/ 60}h',
-          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: isToday ? accent : txtMuted)),
-          textDirection: TextDirection.ltr)..layout();
-        tp.paint(canvas, Offset(x + bw / 2 - tp.width / 2, h - barH - 14));
-      }
-    }
-  }
-  @override
-  bool shouldRepaint(covariant _BarChartPainter old) => old.progress != progress || old.isWeekly != isWeekly;
-}
 
 class _CyberGridPainter extends CustomPainter {
   final bool dark; final double pulse;

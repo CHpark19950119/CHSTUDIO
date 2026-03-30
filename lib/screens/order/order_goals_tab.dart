@@ -586,8 +586,6 @@ class _OrderGoalsTabState extends State<OrderGoalsTab>
   Widget _archiveSection() {
     final successGoals = _doneGoals.where((g) => g.isCompleted).toList();
     final failedGoals = _doneGoals.where((g) => g.isFailed).toList();
-    final total = _doneGoals.length + _doneHabits.length;
-
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(

@@ -916,7 +916,7 @@ class _ProgressScreenState extends State<ProgressScreen>
               if (_expandedGroups.contains(key)) {
                 _expandedGroups.remove(key);
               } else {
-                _expandedGroups.add(key!);
+                _expandedGroups.add(key);
               }
             }),
             child: Padding(

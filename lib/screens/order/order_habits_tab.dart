@@ -351,7 +351,6 @@ class OrderHabitsTab extends StatelessWidget {
   }
 
   Widget _queueItem(OrderHabit h, BuildContext context) {
-    final done = h.isDoneOn(_today);
     return GestureDetector(
       onTap: () => _openHabitSheet(context, editing: h),
       child: TweenAnimationBuilder<double>(

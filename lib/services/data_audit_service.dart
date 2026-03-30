@@ -179,7 +179,7 @@ class DataAuditService {
       final tTR = todayData['timeRecords'];
       if (sTR is Map && tTR is Map) {
         final sMap = sTR[todayKey];
-        if (sMap is Map && tTR is Map) {
+        if (sMap is Map) {
           final sFields = Map<String, dynamic>.from(sMap);
           final tFields = Map<String, dynamic>.from(tTR);
 

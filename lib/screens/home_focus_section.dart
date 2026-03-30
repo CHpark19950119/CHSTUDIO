@@ -319,7 +319,7 @@ extension _HomeFocusSection on _HomeScreenState {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
-        onTap: () => setState(() => _focusSubj = name),
+        onTap: () => _safeSetState(() => _focusSubj = name),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -373,7 +373,7 @@ extension _HomeFocusSection on _HomeScreenState {
     final dk = _dk;
     final c = m == 'study' ? const Color(0xFF6366F1) : BotanicalColors.subjectData;
     return GestureDetector(
-      onTap: () => setState(() => _focusMode = m),
+      onTap: () => _safeSetState(() => _focusMode = m),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: BackdropFilter(
@@ -411,8 +411,6 @@ extension _HomeFocusSection on _HomeScreenState {
     final cal = _cradle.isCalibrated;
     final en = _cradle.isEnabled;
     final on = _cradle.isOnCradle;
-    final dk = _dk;
-
     if (!cal) {
       return _fFrostCard(
         borderColor: Colors.orange.withValues(alpha: 0.15),
@@ -757,7 +755,7 @@ extension _HomeFocusSection on _HomeScreenState {
                         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
                         TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('확인')),
                       ]));
-                  if (ok == true) { await SubjectConfig.resetToDefaults(); setBS(() {}); setState(() {}); }
+                  if (ok == true) { await SubjectConfig.resetToDefaults(); setBS(() {}); _safeSetState(() {}); }
                 },
                 child: Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.07),
@@ -782,7 +780,7 @@ extension _HomeFocusSection on _HomeScreenState {
                   const Spacer(),
                   GestureDetector(onTap: () async {
                     await SubjectConfig.removeSubject(e.key);
-                    setBS(() {}); setState(() {});
+                    setBS(() {}); _safeSetState(() {});
                   }, child: const Padding(padding: EdgeInsets.all(5),
                     child: Icon(Icons.close_rounded, size: 16, color: Colors.redAccent))),
                 ]),

@@ -721,42 +721,6 @@ class SafetyNetService {
   //  체류 장소 확인 알림
   // ═══════════════════════════════════════════
 
-  void _maybeLocationAlert(String dateKey) {
-    final key = '${SafetyCheck.stayLocation.name}_$dateKey';
-    final lastShown = _shownAlerts[key];
-    if (lastShown != null &&
-        DateTime.now().difference(lastShown) < _alertCooldown) {
-      return;
-    }
-    _shownAlerts[key] = DateTime.now();
-
-    // ★ 포그라운드: 크리쳐 장소 오버레이
-    final ctx = navigatorKey.currentContext;
-    if (ctx != null && WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
-      _showLocationOverlay(ctx);
-      _log('Creature location alert');
-      return;
-    }
-
-    _notifPlugin.show(
-      _notifIds[SafetyCheck.stayLocation]!,
-      '어디에 있어?',
-      '체류 중인 것 같아요',
-      NotificationDetails(android: AndroidNotificationDetails(
-        'safety_net', '안전망 알림',
-        importance: Importance.high,
-        priority: Priority.high,
-        actions: const [
-          AndroidNotificationAction(_actionLocSka, '스카', showsUserInterface: true),
-          AndroidNotificationAction(_actionLocLibrary, '도서관', showsUserInterface: true),
-          AndroidNotificationAction(_actionLocOther, '기타', showsUserInterface: true),
-        ],
-      )),
-      payload: 'stayLocation',
-    );
-    _log('Alert: 어디에 있어? (체류 감지)');
-  }
-
   void _showLocationOverlay(BuildContext ctx) {
     showDialog(
       context: ctx,

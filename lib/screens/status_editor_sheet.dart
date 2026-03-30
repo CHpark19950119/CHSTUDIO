@@ -388,7 +388,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
               child: Icon(Icons.remove_rounded, size: 14,
                 color: textMuted.withValues(alpha: 0.5))),
             const SizedBox(width: 4),
-            Text(time!, style: TextStyle(
+            Text(time, style: TextStyle(
               fontSize: 15, fontWeight: FontWeight.w800,
               color: color, fontFeatures: const [FontFeature.tabularFigures()])),
             const SizedBox(width: 4),
@@ -500,7 +500,7 @@ class _StatusEditorSheetState extends State<StatusEditorSheet> {
                 color: dk ? Colors.white.withValues(alpha: 0.10) : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: rowColor.withValues(alpha: 0.25), width: 1.5)),
-              child: Text(time!,
+              child: Text(time,
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800,
                   color: rowColor, fontFeatures: const [FontFeature.tabularFigures()],
                   letterSpacing: 1)),

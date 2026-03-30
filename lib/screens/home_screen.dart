@@ -820,9 +820,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Container(
       decoration: BoxDecoration(
         color: _dk ? const Color(0xFF1E293B) : Colors.white,
-        border: Border(top: BorderSide(
-          color: _dk ? BotanicalColors.borderDark.withValues(alpha: 0.3) : BotanicalColors.borderLight,
-          width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: (_dk ? Colors.black : Colors.blueGrey).withValues(alpha: _dk ? 0.3 : 0.08),
+            blurRadius: 16, offset: const Offset(0, -2)),
+        ],
       ),
       child: SafeArea(
         top: false,
@@ -867,6 +869,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Text(label, style: TextStyle(
             fontSize: 10, fontWeight: sel ? FontWeight.w700 : FontWeight.w500, color: c,
             letterSpacing: -0.2)),
+          const SizedBox(height: 2),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: sel ? 16 : 0, height: 2.5,
+            decoration: BoxDecoration(
+              color: sel ? selColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(2))),
         ]),
       ),
     );
@@ -1184,43 +1193,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final h = _effMin ~/ 60;
     final m = _effMin % 60;
     final pc = BotanicalColors.primary;
-    final pct = (_effMin / 480 * 100).toInt();
+    final pct = (_effMin / 480).clamp(0.0, 1.0);
+    final pctInt = (pct * 100).toInt();
+    // 8시간 목표 기준 색상 그라데이션
+    final progressColor = pct < 0.3
+        ? pc
+        : pct < 0.7
+            ? Color.lerp(pc, const Color(0xFF10B981), (pct - 0.3) / 0.4)!
+            : const Color(0xFF10B981); // emerald
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _border.withValues(alpha: _dk ? 0.15 : 0.6))),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: _dk
+            ? [BotanicalColors.cardDark, const Color(0xFF1A2332)]
+            : [Colors.white, const Color(0xFFF0F4FF)]),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: pc.withValues(alpha: _dk ? 0.08 : 0.06),
+            blurRadius: 16, offset: const Offset(0, 4)),
+        ]),
       child: Row(children: [
-        // 큰 숫자
-        RichText(text: TextSpan(children: [
-          TextSpan(text: '$h', style: TextStyle(
-            fontSize: 26, fontWeight: FontWeight.w700, color: _textMain,
-            fontFamily: 'monospace', height: 1)),
-          TextSpan(text: 'h ', style: TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w400, color: _textMuted)),
-          TextSpan(text: '${m.toString().padLeft(2, '0')}', style: TextStyle(
-            fontSize: 18, fontWeight: FontWeight.w600, color: _textSub,
-            fontFamily: 'monospace')),
-          TextSpan(text: 'm', style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w400, color: _textMuted)),
-        ])),
-        const SizedBox(width: 12),
-        // 프로그레스
+        // 원형 프로그레스
+        SizedBox(width: 64, height: 64,
+          child: CustomPaint(
+            painter: _CircleProgressPainter(
+              progress: pct,
+              color: progressColor,
+              bgColor: _dk ? Colors.white.withValues(alpha: 0.06) : pc.withValues(alpha: 0.06),
+              strokeWidth: 5),
+            child: Center(child: Text('$pctInt%', style: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w800, color: progressColor,
+              fontFamily: 'monospace'))),
+          ),
+        ),
+        const SizedBox(width: 16),
+        // 숫자 + 라벨
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Text('순공시간', style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w600, color: _textMuted)),
-            const Spacer(),
-            Text('$pct%', style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700, color: pc)),
-          ]),
+          Text('순공시간', style: TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w600, color: _textMuted,
+            letterSpacing: 0.5)),
+          const SizedBox(height: 2),
+          RichText(text: TextSpan(children: [
+            TextSpan(text: '$h', style: TextStyle(
+              fontSize: 32, fontWeight: FontWeight.w700, color: _textMain,
+              fontFamily: 'monospace', height: 1.1)),
+            TextSpan(text: 'h ', style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w400, color: _textMuted)),
+            TextSpan(text: '${m.toString().padLeft(2, '0')}', style: TextStyle(
+              fontSize: 22, fontWeight: FontWeight.w600, color: _textSub,
+              fontFamily: 'monospace')),
+            TextSpan(text: 'm', style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w400, color: _textMuted)),
+          ])),
           const SizedBox(height: 4),
-          ClipRRect(borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: (_effMin / 480).clamp(0.0, 1.0),
-              backgroundColor: _dk ? Colors.white.withValues(alpha: 0.06) : pc.withValues(alpha: 0.08),
-              valueColor: AlwaysStoppedAnimation(pc), minHeight: 4)),
+          // 목표까지 남은 시간
+          Text(_effMin >= 480
+            ? '목표 달성!'
+            : '목표까지 ${(480 - _effMin) ~/ 60}h ${(480 - _effMin) % 60}m',
+            style: TextStyle(
+              fontSize: 10, fontWeight: FontWeight.w500,
+              color: _effMin >= 480 ? const Color(0xFF10B981) : _textMuted)),
         ])),
       ]),
     );
@@ -1239,9 +1275,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [mc.withValues(alpha: _dk ? 0.15 : 0.06), mc.withValues(alpha: _dk ? 0.05 : 0.02)]),
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [mc.withValues(alpha: _dk ? 0.18 : 0.08), mc.withValues(alpha: _dk ? 0.06 : 0.02)]),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: mc.withValues(alpha: 0.2))),
+          border: Border.all(color: mc.withValues(alpha: 0.25)),
+          boxShadow: [
+            BoxShadow(color: mc.withValues(alpha: _dk ? 0.12 : 0.08), blurRadius: 12, offset: const Offset(0, 3)),
+          ]),
         child: Row(children: [
           Container(width: 10, height: 10,
             decoration: BoxDecoration(color: mc, shape: BoxShape.circle,
@@ -1267,4 +1307,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+}
+
+/// 원형 프로그레스 페인터 (순공시간 카드용)
+class _CircleProgressPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final Color bgColor;
+  final double strokeWidth;
+  _CircleProgressPainter({required this.progress, required this.color, required this.bgColor, this.strokeWidth = 5});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+    canvas.drawCircle(center, radius, Paint()
+      ..style = PaintingStyle.stroke ..strokeWidth = strokeWidth ..color = bgColor);
+    if (progress > 0) {
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      canvas.drawArc(rect, -1.5708, progress * 6.2832, false, Paint()
+        ..style = PaintingStyle.stroke ..strokeWidth = strokeWidth ..color = color
+        ..strokeCap = StrokeCap.round);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CircleProgressPainter old) =>
+    old.progress != progress || old.color != color;
 }

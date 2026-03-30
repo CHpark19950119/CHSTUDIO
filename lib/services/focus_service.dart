@@ -739,66 +739,82 @@ class FocusService extends ChangeNotifier {
       return;
     }
     final addedMin = cycle.studyMin + cycle.lectureMin;
-    try {
-      final fb = FirebaseService();
+    final fb = FirebaseService();
 
+    // ★ 1. focusCycles 저장 (독립 — 실패해도 나머지 계속)
+    try {
       await fb.saveFocusCycle(cycle.date, cycle);
-      final existing = await fb.getStudyTimeRecords();
-      final prev = existing[cycle.date];
+      debugPrint('[FocusService] saveFocusCycle OK');
+    } catch (e) {
+      debugPrint('[FocusService] saveFocusCycle FAIL: $e');
+    }
+
+    // ★ 2. studyTimeRecords — Hive 합계 기준 (read-then-write 제거)
+    //    Hive가 정확한 합계를 가지고 있으므로 거기서 계산
+    try {
+      int totalStudy = 0, totalLecture = 0, totalEffective = 0;
+      for (final s in _todaySessions) {
+        totalStudy += s.studyMin;
+        totalLecture += s.lectureMin;
+        totalEffective += s.effectiveMin;
+      }
       final record = StudyTimeRecord(
         date: cycle.date,
-        totalMinutes: (prev?.totalMinutes ?? 0) + addedMin,
-        studyMinutes: (prev?.studyMinutes ?? 0) + cycle.studyMin,
-        lectureMinutes: (prev?.lectureMinutes ?? 0) + cycle.lectureMin,
-        effectiveMinutes: (prev?.effectiveMinutes ?? 0) + cycle.effectiveMin,
+        totalMinutes: totalStudy + totalLecture,
+        studyMinutes: totalStudy,
+        lectureMinutes: totalLecture,
+        effectiveMinutes: totalEffective,
       );
       await fb.updateStudyTimeRecord(cycle.date, record,
           effectiveDelta: cycle.effectiveMin);
-
-      // today doc studyTime.subjects 갱신 (total은 updateStudyTimeRecord에서 처리됨)
-      if (addedMin > 0) {
-        try {
-          final subjectMin = <String, int>{};
-          for (final seg in cycle.segments) {
-            if (seg.mode == 'study' || seg.mode == 'lecture') {
-              subjectMin[seg.subject] = (subjectMin[seg.subject] ?? 0) + seg.durationMin;
-            }
-          }
-          for (final entry in subjectMin.entries) {
-            await fb.updateTodayField('studyTime.subjects.${entry.key}', FieldValue.increment(entry.value));
-          }
-        } catch (e) {
-          debugPrint('[FocusService] today update fail: $e');
-        }
-      }
-
-      try {
-        fb.appendFocusSessionToHistory(cycle.date, {
-          'subject': cycle.subject,
-          'start': cycle.startTime,
-          'end': cycle.endTime ?? DateTime.now().toIso8601String(),
-          'minutes': addedMin,
-          'effectiveMin': cycle.effectiveMin,
-        });
-      } catch (_) {}
-
-      debugPrint('[FocusService] sync OK: ${cycle.date} ${cycle.effectiveMin}min');
-
-      // 홈 위젯 갱신
-      WidgetRenderService().updateWidget().catchError((e) {
-        debugPrint('[Focus] widget update fail: $e');
-      });
-
-      if (addedMin > 0) {
-        try {
-          await CreatureService().addStudyReward(addedMin);
-        } catch (_) {}
-      }
+      debugPrint('[FocusService] studyTimeRecord OK: effective=$totalEffective');
     } catch (e) {
-      debugPrint('[FocusService] sync FAIL: $e');
+      debugPrint('[FocusService] studyTimeRecord FAIL: $e');
     }
 
-    // ★ HTTP 백업: Firestore SDK 타임아웃 대비 CF 엔드포인트로 직접 쓰기
+    // ★ 3. today doc subjects 갱신 (독립)
+    if (addedMin > 0) {
+      try {
+        final subjectMin = <String, int>{};
+        for (final seg in cycle.segments) {
+          if (seg.mode == 'study' || seg.mode == 'lecture') {
+            subjectMin[seg.subject] = (subjectMin[seg.subject] ?? 0) + seg.durationMin;
+          }
+        }
+        for (final entry in subjectMin.entries) {
+          await fb.updateTodayField('studyTime.subjects.${entry.key}', FieldValue.increment(entry.value));
+        }
+        debugPrint('[FocusService] today subjects OK');
+      } catch (e) {
+        debugPrint('[FocusService] today subjects FAIL: $e');
+      }
+    }
+
+    // ★ 4. history 기록 (독립)
+    try {
+      fb.appendFocusSessionToHistory(cycle.date, {
+        'subject': cycle.subject,
+        'start': cycle.startTime,
+        'end': cycle.endTime ?? DateTime.now().toIso8601String(),
+        'minutes': addedMin,
+        'effectiveMin': cycle.effectiveMin,
+      });
+      debugPrint('[FocusService] history OK');
+    } catch (e) {
+      debugPrint('[FocusService] history FAIL: $e');
+    }
+
+    // ★ 5. 보상 + 위젯 (독립)
+    WidgetRenderService().updateWidget().catchError((e) {
+      debugPrint('[Focus] widget update fail: $e');
+    });
+    if (addedMin > 0) {
+      try { await CreatureService().addStudyReward(addedMin); } catch (_) {}
+    }
+
+    debugPrint('[FocusService] sync pipeline done: ${cycle.date} +${cycle.effectiveMin}min');
+
+    // ★ 6. HTTP 백업: Firestore SDK 실패 대비
     try {
       await _httpBackupSync(cycle);
     } catch (e) {

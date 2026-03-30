@@ -38,9 +38,17 @@ extension _HomeRoutineCard on _HomeScreenState {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _dk ? BotanicalColors.cardDark : BotanicalColors.cardLight,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _border.withValues(alpha: _dk ? 0.15 : 0.6))),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+          colors: _dk
+            ? [BotanicalColors.cardDark, const Color(0xFF1A2332)]
+            : [Colors.white, const Color(0xFFFAFBFF)]),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: (_dk ? Colors.black : Colors.blueGrey).withValues(alpha: _dk ? 0.2 : 0.06),
+            blurRadius: 12, offset: const Offset(0, 3)),
+        ]),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // ── 아이콘 스트립 ──
         Row(children: [
@@ -75,18 +83,25 @@ extension _HomeRoutineCard on _HomeScreenState {
   Widget _routineChip(_RItem i) {
     return GestureDetector(
       onTap: i.onTap,
-      onLongPress: i.onLong,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // 아이콘 원
         Container(
-          width: 36, height: 36,
+          width: 38, height: 38,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: i.active
-              ? i.color.withValues(alpha: _dk ? 0.12 : 0.08)
+            gradient: i.active ? LinearGradient(
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [
+                i.color.withValues(alpha: _dk ? 0.18 : 0.12),
+                i.color.withValues(alpha: _dk ? 0.06 : 0.04),
+              ]) : null,
+            color: i.active ? null
               : (_dk ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02)),
             border: Border.all(
-              color: i.active ? i.color.withValues(alpha: 0.3) : Colors.transparent, width: 1.5)),
+              color: i.active ? i.color.withValues(alpha: 0.35) : Colors.transparent, width: 1.5),
+            boxShadow: i.active ? [
+              BoxShadow(color: i.color.withValues(alpha: 0.15), blurRadius: 8, spreadRadius: 1),
+            ] : null),
           child: Stack(alignment: Alignment.center, children: [
             Text(i.emoji, style: TextStyle(fontSize: i.active ? 16 : 14)),
             if (i.live) Positioned(right: 0, top: 0,
@@ -151,7 +166,7 @@ extension _HomeRoutineCard on _HomeScreenState {
       _bedTime = updated.bedTime;
       _mealStart = updated.mealStart;
       _mealEnd = updated.mealEnd;
-      if (updated.meals != null) _todayMeals = updated.meals!;
+      if (updated.meals.isNotEmpty) _todayMeals = updated.meals;
     });
 
     if (mounted) {
@@ -173,7 +188,6 @@ class _RItem {
   final bool live;
   final String? sub;
   final VoidCallback? onTap;
-  final VoidCallback? onLong;
   const _RItem(this.emoji, this.label, this.active, this.time, this.color,
-    {this.live = false, this.sub, this.onTap, this.onLong});
+    {this.live = false, this.sub, this.onTap});
 }
