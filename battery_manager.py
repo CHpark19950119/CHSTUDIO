@@ -7,6 +7,9 @@
 import time
 import ctypes
 import subprocess
+import sys
+import os
+import atexit
 import psutil
 import requests
 import tinytuya
@@ -261,7 +264,33 @@ def check():
         state = "충전중" if b.power_plugged else "방전중"
         print(f"[Battery] {pct}% ({state}), 유지")
 
+def _acquire_pid_lock():
+    """PID 락 파일로 중복 실행 방지. 이미 실행 중이면 sys.exit(0)."""
+    lock_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".battery_manager.lock")
+    if os.path.exists(lock_path):
+        try:
+            with open(lock_path, "r") as f:
+                old_pid = int(f.read().strip())
+            if psutil.pid_exists(old_pid):
+                print(f"[Lock] 이미 실행 중 (PID {old_pid}). 종료.")
+                sys.exit(0)
+            else:
+                print(f"[Lock] Stale 락 제거 (PID {old_pid} 죽음)")
+                os.remove(lock_path)
+        except (ValueError, OSError):
+            os.remove(lock_path)
+    with open(lock_path, "w") as f:
+        f.write(str(os.getpid()))
+    def _remove_lock():
+        try:
+            os.remove(lock_path)
+        except OSError:
+            pass
+    atexit.register(_remove_lock)
+    print(f"[Lock] PID {os.getpid()} 락 획득")
+
 if __name__ == "__main__":
+    _acquire_pid_lock()
     print(f"배터리 매니저 시작 ({LOW}~{HIGH}%, {INTERVAL}초 간격)")
     # 시작 시 WiFi 연결 확인
     ensure_wifi()
