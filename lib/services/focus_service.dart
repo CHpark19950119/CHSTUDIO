@@ -7,11 +7,11 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 import 'dart:convert';
 import '../models/models.dart';
+import '../models/focus_entity.dart';
+import 'objectbox_store.dart';
 import 'firebase_service.dart';
-import 'write_queue_service.dart';
 import 'creature_service.dart';
 import '../utils/study_date_utils.dart';
-import '../constants.dart';
 import 'widget_render_service.dart';
 
 // ══════════════════════════════════════════
@@ -105,75 +105,44 @@ class FocusService extends ChangeNotifier {
   }
 
   // ══════════════════════════════════════════
-  //  Hive 세션 기록 CRUD
+  //  ObjectBox 세션 기록 CRUD
   // ══════════════════════════════════════════
 
   Future<Box> _openBox() async => Hive.openBox(_boxName);
 
-  Future<Map<String, List<FocusCycle>>> getHiveSessionsForMonth(String monthPrefix) async {
+  ObjectBoxStore get _obx => ObjectBoxStore.instance;
+
+  /// 월별 세션 조회 (캘린더용)
+  Future<Map<String, List<FocusCycle>>> getSessionsForMonth(String monthPrefix) async {
     final result = <String, List<FocusCycle>>{};
     try {
-      final box = await _openBox();
-      for (final key in box.keys) {
-        if (key is! String || !key.startsWith('sessions_$monthPrefix')) continue;
-        final dateStr = key.replaceFirst('sessions_', '');
-        final raw = box.get(key);
-        if (raw == null) continue;
-        final list = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
-        final sessions = <FocusCycle>[];
-        for (final e in list) {
-          try {
-            if (e is Map) {
-              final m = Map<String, dynamic>.from(e);
-              m['effectiveMin'] = ((m['studyMin'] as num?)?.toInt() ?? 0) + ((m['lectureMin'] as num?)?.toInt() ?? 0);
-              sessions.add(FocusCycle.fromMap(m));
-            }
-          } catch (_) {}
-        }
-        if (sessions.isNotEmpty) result[dateStr] = sessions;
+      final entities = _obx.getCyclesByMonth(monthPrefix);
+      for (final e in entities) {
+        final cycle = e.toCycle();
+        result.putIfAbsent(cycle.date, () => []).add(cycle);
       }
     } catch (e) {
-      debugPrint('[Focus] getHiveSessionsForMonth error: $e');
+      debugPrint('[Focus] getSessionsForMonth error: $e');
     }
     return result;
   }
 
+  /// 하위 호환 (캘린더 코드에서 호출)
+  Future<Map<String, List<FocusCycle>>> getHiveSessionsForMonth(String monthPrefix) =>
+      getSessionsForMonth(monthPrefix);
+
   Future<void> _loadTodaySessions() async {
     final dateStr = StudyDateUtils.todayKey();
-    Box? box;
+
+    // ★ ObjectBox에서 오늘 세션 로드
     try {
-      box = await _openBox();
-      final raw = box.get('sessions_$dateStr');
-      if (raw != null) {
-        final list = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
-        _todaySessions = [];
-        for (final e in list) {
-          try {
-            if (e is Map) {
-              final m = Map<String, dynamic>.from(e);
-              // ★ effectiveMin 재계산 (구 0.5 가중치 데이터 교정)
-              m['effectiveMin'] = ((m['studyMin'] as num?)?.toInt() ?? 0) + ((m['lectureMin'] as num?)?.toInt() ?? 0);
-              _todaySessions.add(FocusCycle.fromMap(m));
-            }
-          } catch (_) {}
-        }
-      } else {
-        _todaySessions = [];
-      }
+      _todaySessions = _obx.getCyclesByDate(dateStr).map((e) => e.toCycle()).toList();
     } catch (e) {
-      debugPrint('[Focus] Hive load error: $e');
+      debugPrint('[Focus] ObjectBox load error: $e');
       _todaySessions = [];
     }
 
-    // Firestore pendingSessions 머지
-    try {
-      box ??= await _openBox();
-      await _mergeFirestoreSessions(dateStr, box);
-    } catch (e) {
-      debugPrint('[Focus] merge error: $e');
-    }
-
-    // ★ Firestore focusCycles fallback: Hive에 없는 세션 복구
+    // Firestore focusCycles fallback: 로컬에 없는 세션 복구
     try {
       final remoteCycles = await FirebaseService().getFocusCycles(dateStr).timeout(const Duration(seconds: 3));
       if (remoteCycles.isNotEmpty) {
@@ -181,32 +150,30 @@ class FocusService extends ChangeNotifier {
         int recovered = 0;
         for (final rc in remoteCycles) {
           if (rc.id.isNotEmpty && !localIds.contains(rc.id)) {
-            _todaySessions.add(FocusCycle(
+            final cycle = FocusCycle(
               id: rc.id, date: rc.date,
               startTime: rc.startTime, endTime: rc.endTime,
               subject: rc.subject, segments: rc.segments,
               studyMin: rc.studyMin, lectureMin: rc.lectureMin,
               effectiveMin: rc.studyMin + rc.lectureMin,
               restMin: rc.restMin,
-            ));
+            );
+            _obx.putCycle(FocusCycleEntity.fromCycle(cycle));
+            _todaySessions.add(cycle);
             recovered++;
           }
         }
-        if (recovered > 0) {
-          box ??= await _openBox();
-          await box.put('sessions_$dateStr', _todaySessions.map((c) => c.toMap()).toList());
-          debugPrint('[Focus] recovered $recovered sessions from Firestore');
-        }
+        if (recovered > 0) debugPrint('[Focus] recovered $recovered sessions from Firestore');
       }
     } catch (_) {}
 
-    // ★ 고스트 세션 정리: effectiveMin=0이고 실제 공부 시간 없는 세션 제거
+    // 고스트 세션 정리
     _todaySessions.removeWhere((c) => c.studyMin + c.lectureMin == 0 && c.restMin == 0);
 
     _todayStudyMinutes = _todaySessions.fold(0, (s, c) => s + c.effectiveMin);
     debugPrint('[Focus] loaded ${_todaySessions.length} sessions ($dateStr, ${_todayStudyMinutes}min)');
 
-    // ★ Firestore studyTimeRecords 자동 교정 (Hive 재계산 결과 반영)
+    // Firestore studyTimeRecords 자동 교정
     if (_todaySessions.isNotEmpty) {
       try {
         int totalStudy = 0, totalLecture = 0;
@@ -223,101 +190,13 @@ class FocusService extends ChangeNotifier {
     }
   }
 
-  Future<void> _mergeFirestoreSessions(String dateStr, Box box) async {
+  /// ObjectBox에 세션 저장 (트랜잭션, 타입 안전)
+  void _saveSessionToDb(FocusCycle cycle) {
     try {
-      final studyData = await FirebaseService().getStudyData();
-      if (studyData == null) return;
-      final rawPending = studyData['pendingSessions'];
-      if (rawPending == null || rawPending is! Map) return;
-      final pending = Map<String, dynamic>.from(rawPending);
-      if (pending[dateStr] == null) return;
-      final rawDay = pending[dateStr];
-      final List<dynamic> remoteList;
-      if (rawDay is List) {
-        remoteList = rawDay;
-      } else if (rawDay is Map) {
-        remoteList = (Map<String, dynamic>.from(rawDay)).values.toList();
-      } else {
-        return;
-      }
-      if (remoteList.isEmpty) return;
-      final localIds = _todaySessions.map((s) => s.id).toSet();
-      int merged = 0;
-      for (final item in remoteList) {
-        if (item is! Map) continue;
-        final m = Map<String, dynamic>.from(item);
-        final id = m['id'] as String? ?? '';
-        if (id.isNotEmpty && !localIds.contains(id)) {
-          final sMin = m['studyMinutes'] as int? ?? 0;
-          final lMin = m['lectureMinutes'] as int? ?? 0;
-          _todaySessions.add(FocusCycle(
-            id: id, date: dateStr,
-            startTime: m['startTime'] as String? ?? '',
-            endTime: m['endTime'] as String? ?? '',
-            subject: m['subject'] as String? ?? '',
-            segments: [],
-            studyMin: sMin,
-            lectureMin: lMin,
-            effectiveMin: sMin + lMin,
-            restMin: m['restMinutes'] as int? ?? 0,
-          ));
-          merged++;
-        }
-      }
-      if (merged > 0) {
-        await box.put('sessions_$dateStr', _todaySessions.map((c) => c.toMap()).toList());
-        debugPrint('[Focus] merged $merged pending sessions');
-      }
-      try {
-        FirestoreWriteQueue().enqueue(kStudyDoc, {'pendingSessions.$dateStr': FieldValue.delete()});
-      } catch (_) {}
+      _obx.putCycle(FocusCycleEntity.fromCycle(cycle));
+      debugPrint('[Focus] saved to ObjectBox: ${cycle.id} (${cycle.effectiveMin}min)');
     } catch (e) {
-      debugPrint('[Focus] mergePending error: $e');
-    }
-  }
-
-  Future<void> _saveSessionToHive(FocusCycle cycle) async {
-    try {
-      final box = await _openBox();
-      final dateStr = cycle.date;
-      final key = 'sessions_$dateStr';
-      final raw = box.get(key);
-      List<Map<String, dynamic>> list = [];
-      if (raw != null) {
-        // ★ 개별 항목 안전 파싱: 하나가 깨져도 나머지 보존
-        try {
-          final decoded = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
-          for (final e in decoded) {
-            try {
-              if (e is Map) list.add(Map<String, dynamic>.from(e));
-            } catch (_) {} // 개별 항목 스킵
-          }
-        } catch (e) {
-          // ★ 전체 파싱 실패 → 기존 데이터 날리지 않고 백업 후 진행
-          debugPrint('[Focus] Hive parse failed, backing up: $e');
-          await box.put('${key}_backup', raw);
-        }
-      }
-
-      // 중복 ID 방지
-      list.removeWhere((m) => m['id'] == cycle.id);
-      list.add(cycle.toMap());
-      await box.put(key, list);
-
-      // ★ Write 검증: 저장 후 읽어서 세션 수 확인
-      final verify = box.get(key);
-      if (verify != null) {
-        final verifyList = List<dynamic>.from(verify is String ? jsonDecode(verify) : verify);
-        if (verifyList.length < list.length) {
-          debugPrint('[Focus] ⚠️ Hive write verification failed: wrote ${list.length}, read ${verifyList.length}');
-        }
-      }
-
-      await box.put('todayStudyMin_$dateStr',
-          list.fold<int>(0, (s, m) => s + ((m['effectiveMin'] as num?)?.toInt() ?? 0)));
-      debugPrint('[Focus] saved to Hive: ${cycle.id} (${cycle.effectiveMin}min, total ${list.length} sessions)');
-    } catch (e) {
-      debugPrint('[Focus] saveSessionToHive error: $e');
+      debugPrint('[Focus] ObjectBox save error: $e');
     }
   }
 
@@ -327,26 +206,16 @@ class FocusService extends ChangeNotifier {
   }
 
   Future<List<FocusCycle>> getSessionsForDate(String dateStr) async {
+    // ObjectBox 우선
     try {
-      final box = await _openBox();
-      final raw = box.get('sessions_$dateStr');
-      if (raw != null) {
-        final list = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
-        final sessions = list.map((e) {
-          final m = Map<String, dynamic>.from(e as Map);
-          m['effectiveMin'] = ((m['studyMin'] as num?)?.toInt() ?? 0) + ((m['lectureMin'] as num?)?.toInt() ?? 0);
-          return FocusCycle.fromMap(m);
-        }).toList();
-        if (sessions.isNotEmpty) return sessions;
-      }
+      final entities = _obx.getCyclesByDate(dateStr);
+      if (entities.isNotEmpty) return entities.map((e) => e.toCycle()).toList();
     } catch (_) {}
+    // Firestore fallback
     try {
       final cycles = await FirebaseService().getFocusCycles(dateStr).timeout(const Duration(seconds: 3));
       if (cycles.isNotEmpty) {
-        try {
-          final box = await _openBox();
-          await box.put('sessions_$dateStr', cycles.map((c) => c.toMap()).toList());
-        } catch (_) {}
+        for (final c in cycles) _obx.putCycle(FocusCycleEntity.fromCycle(c));
       }
       return cycles;
     } catch (_) {}
@@ -431,7 +300,7 @@ class FocusService extends ChangeNotifier {
 
     _todaySessions.add(cycle);
     _todayStudyMinutes += effectiveMin;
-    await _saveSessionToHive(cycle);
+    _saveSessionToDb(cycle);
     await _clearState();
     notifyListeners();
 
@@ -587,15 +456,8 @@ class FocusService extends ChangeNotifier {
         }
       }
 
-      try {
-        final box = await _openBox();
-        final raw = box.get('sessions_$date');
-        if (raw != null) {
-          final list = List<dynamic>.from(raw is String ? jsonDecode(raw) : raw);
-          list.removeWhere((e) => (Map<String, dynamic>.from(e as Map))['id'] == cycleId);
-          await box.put('sessions_$date', list);
-        }
-      } catch (_) {}
+      // ObjectBox에서 삭제
+      _obx.removeCycleByFcId(cycleId);
 
       if (date == StudyDateUtils.todayKey()) {
         _todaySessions.removeWhere((c) => c.id == cycleId);

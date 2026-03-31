@@ -237,7 +237,7 @@ class SafetyNetService {
         final doorOpened = door.lastDoorState == DoorState.open
             && door.lastEventTime != null
             && door.lastEventTime!.day == now.day;
-        final pastNine = now.hour >= 9;
+        final pastNine = now.hour >= 9 && now.hour < 15;
 
         if (doorOpened || pastNine) {
           _maybeAlert(SafetyCheck.wakeMiss, todayKey,
