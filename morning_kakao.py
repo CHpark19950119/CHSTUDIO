@@ -1,7 +1,9 @@
 """매일 아침 다영이한테 영어 응원 메시지 카톡 전송"""
 import subprocess, os, tempfile, time, random, anthropic
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "REDACTED_ANTHROPIC_KEY")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+if not ANTHROPIC_API_KEY:
+    raise RuntimeError("ANTHROPIC_API_KEY 환경변수가 없다. 셸에서 export 후 재실행.")
 
 def generate_message():
     """Claude로 천홍이 인격 담은 영어 메시지 생성"""
