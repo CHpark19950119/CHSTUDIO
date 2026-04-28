@@ -218,24 +218,114 @@ class _DayDetail extends StatelessWidget {
 
   List<Widget> _rows(Map<String, dynamic> data) {
     final widgets = <Widget>[];
-    if (data['wake'] is Map) widgets.add(_row('기상', (data['wake']['time'] ?? '—').toString()));
-    if (data['sleep'] is Map) widgets.add(_row('취침', (data['sleep']['time'] ?? '—').toString()));
-    if (data['meals'] is List) {
-      for (final m in (data['meals'] as List).whereType<Map>()) {
-        widgets.add(_row('식사 ${m['time'] ?? ''}', m['menu']?.toString() ?? ''));
+
+    // 기상 / 취침
+    if (data['wake'] is Map) {
+      final w = data['wake'] as Map;
+      widgets.add(_row('기상', '${w['time'] ?? '—'}${w['note'] != null ? ' · ${w['note']}' : ''}'));
+    }
+    if (data['sleep'] is Map) {
+      final s = data['sleep'] as Map;
+      widgets.add(_row('취침', '${s['time'] ?? '—'}${s['note'] != null ? ' · ${s['note']}' : ''}'));
+    }
+
+    // 늦잠
+    if (data['oversleep'] is Map) {
+      final o = data['oversleep'] as Map;
+      widgets.add(_row('늦잠', '${o['actual_wake'] ?? ''} (계획 ${o['planned_wake'] ?? ''}, +${o['deviation_min'] ?? ''}분)'));
+    }
+
+    // 낮잠
+    if (data['nap'] is List) {
+      for (final n in (data['nap'] as List).whereType<Map>()) {
+        widgets.add(_row('낮잠 ${n['time'] ?? ''}',
+            '~${n['wake_time'] ?? ''} (${n['duration_min'] ?? ''}분)${n['note'] != null ? ' · ${n['note']}' : ''}'));
       }
     }
+
+    // 식사
+    if (data['meals'] is List) {
+      for (final m in (data['meals'] as List).whereType<Map>()) {
+        final start = m['start'] ?? m['time'] ?? '';
+        final end = m['end'];
+        final menu = m['menu']?.toString() ?? '';
+        widgets.add(_row('식사 $start${end != null ? '~$end' : ''}',
+            '$menu${m['note'] != null ? ' · ${m['note']}' : ''}'));
+      }
+    }
+
+    // 외출
+    if (data['outing'] is List) {
+      for (final o in (data['outing'] as List).whereType<Map>()) {
+        final t = o['time'] ?? '';
+        final ret = o['returnHome'];
+        final dest = o['destination'] ?? '';
+        widgets.add(_row('외출 $t${ret != null ? '~$ret' : ''}',
+            '$dest${o['mode'] != null ? ' · ${o['mode']}' : ''}${o['note'] != null ? ' · ${o['note']}' : ''}'));
+      }
+    }
+
+    // 배변
     if (data['bowel'] is List) {
       for (final b in (data['bowel'] as List).whereType<Map>()) {
         widgets.add(_row('배변 ${b['time'] ?? ''}', b['status']?.toString() ?? ''));
       }
     }
+
+    // 공부 (legacy)
     if (data['study'] is List) {
       for (final s in (data['study'] as List).whereType<Map>()) {
         widgets.add(_row('공부 ${s['time'] ?? ''}',
             '${s['subject'] ?? ''} · ${s['duration_min'] ?? ''}분 ${s['note'] ?? ''}'));
       }
     }
+
+    // 이벤트 (general)
+    if (data['events'] is List) {
+      for (final e in (data['events'] as List).whereType<Map>()) {
+        widgets.add(_row('이벤트 ${e['time'] ?? ''}',
+            '[${e['tag'] ?? ''}] ${e['note'] ?? ''}'));
+      }
+    }
+
+    // HB 작업 events
+    if (data['events_hb'] is List) {
+      for (final e in (data['events_hb'] as List).whereType<Map>()) {
+        widgets.add(_row('HB ${e['time'] ?? ''}',
+            '[${e['tag'] ?? ''}] ${e['note'] ?? ''}'));
+      }
+    }
+
+    // 미디어 (쇼츠 등)
+    if (data['media'] is List) {
+      for (final m in (data['media'] as List).whereType<Map>()) {
+        widgets.add(_row('미디어 ${m['type'] ?? ''}',
+            '${m['duration_min'] ?? ''}분 (${m['start'] ?? ''}~${m['end'] ?? ''})${m['note'] != null ? ' · ${m['note']}' : ''}'));
+      }
+    }
+
+    // 결제
+    if (data['payments'] is List) {
+      for (final p in (data['payments'] as List).whereType<Map>()) {
+        widgets.add(_row('결제 ${p['time'] ?? ''}',
+            '${p['place'] ?? ''} ${p['amount'] ?? ''}원 · ${p['service'] ?? ''}${p['note'] != null ? ' · ${p['note']}' : ''}'));
+      }
+    }
+
+    // 할 일
+    if (data['todos'] is List) {
+      for (final t in (data['todos'] as List).whereType<Map>()) {
+        widgets.add(_row('할일 ${t['priority'] ?? ''}',
+            '${t['task'] ?? ''}${t['from'] != null ? ' (${t['from']})' : ''}'));
+      }
+    }
+
+    // 심리 / 노트
+    if (data['psych'] is Map) {
+      final p = data['psych'] as Map;
+      widgets.add(_row('심리', p.entries.map((e) => '${e.key}=${e.value}').join(' · ')));
+    }
+
     return widgets;
   }
 

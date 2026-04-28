@@ -689,7 +689,10 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       // life_logs/YYYY-MM-DD 지원 (합의 26)
       const llReadMatch = docName.match(/^life_logs\/(\d{4}-\d{2}-\d{2})$/);
       if (llReadMatch) allowed[docName] = "life_logs/" + llReadMatch[1];
-      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM|life_logs/YYYY-MM-DD"}); return; }
+      // routine/YYYY-MM-DD 지원 (HB read 권한 확장 · 2026-04-26 00:46)
+      const rtReadMatch = docName.match(/^routine\/(\d{4}-\d{2}-\d{2})$/);
+      if (rtReadMatch) allowed[docName] = "routine/" + rtReadMatch[1];
+      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM|life_logs/YYYY-MM-DD|routine/YYYY-MM-DD"}); return; }
       const snap = await db.doc("users/" + UID + "/" + allowed[docName]).get();
       if (!snap.exists) { res.status(200).json({}); return; }
       if (!field) { res.status(200).json(snap.data()); return; }
@@ -719,7 +722,10 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       // life_logs/YYYY-MM-DD 지원 (HB 세션 기입 전용 · 2026-04-24 합의 26)
       const llMatch = docName.match(/^life_logs\/(\d{4}-\d{2}-\d{2})$/);
       if (llMatch) allowed[docName] = "life_logs/" + llMatch[1];
-      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM|life_logs/YYYY-MM-DD"}); return; }
+      // routine/YYYY-MM-DD 지원 (HB write 권한 확장 · 2026-04-26 00:46)
+      const rtMatch = docName.match(/^routine\/(\d{4}-\d{2}-\d{2})$/);
+      if (rtMatch) allowed[docName] = "routine/" + rtMatch[1];
+      if (!allowed[docName]) { res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM|life_logs/YYYY-MM-DD|routine/YYYY-MM-DD"}); return; }
 
       // 타입 자동 변환 (__DELETE__ → FieldValue.delete())
       let parsed;
@@ -768,8 +774,11 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       if (histMatch) allowed[docName] = "history/" + histMatch[1];
       const llMatch = docName.match(/^life_logs\/(\d{4}-\d{2}-\d{2})$/);
       if (llMatch) allowed[docName] = "life_logs/" + llMatch[1];
+      // routine/YYYY-MM-DD 지원 (append 권한 확장 · 2026-04-26 00:46)
+      const rtMatchA = docName.match(/^routine\/(\d{4}-\d{2}-\d{2})$/);
+      if (rtMatchA) allowed[docName] = "routine/" + rtMatchA[1];
       if (!allowed[docName]) {
-        res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM|life_logs/YYYY-MM-DD"});
+        res.status(400).json({error: "doc must be today|study|iot|history/YYYY-MM|life_logs/YYYY-MM-DD|routine/YYYY-MM-DD"});
         return;
       }
 
@@ -784,6 +793,47 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
         {merge: true}
       );
       res.status(200).json({ok: true, doc: docName, field, appended: elements.length});
+      return;
+    }
+
+    // ═══ life_logs 배열 필드 toggle ═══ (사용자 지시 2026-04-28 13:08)
+    // ?q=toggle&doc=life_logs/2026-04-28&field=outing&end_key=returnHome
+    // ?q=toggle&doc=life_logs/2026-04-28&field=meals&end_key=end
+    // 마지막 element 의 end_key 가 null/undefined 면 채우기 (종료),
+    // 아니면 새 entry 추가 (시작). atomic read-modify-write.
+    if (req.query.q === "toggle") {
+      const docName = req.query.doc || "";
+      const field = req.query.field;
+      const endKey = req.query.end_key || "end";
+      if (!field) { res.status(400).json({error: "field required"}); return; }
+      const llMatchT = docName.match(/^life_logs\/(\d{4}-\d{2}-\d{2})$/);
+      if (!llMatchT) { res.status(400).json({error: "doc must be life_logs/YYYY-MM-DD"}); return; }
+      const allowedDoc = "life_logs/" + llMatchT[1];
+      const docRef = db.doc("users/" + UID + "/" + allowedDoc);
+
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const timeStr = `${hh}:${mm}`;
+
+      let mode;
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(docRef);
+        const data = snap.exists ? snap.data() : {};
+        const arr = Array.isArray(data[field]) ? [...data[field]] : [];
+        if (arr.length > 0 && (arr[arr.length - 1][endKey] == null)) {
+          // 종료
+          arr[arr.length - 1] = {...arr[arr.length - 1], [endKey]: timeStr};
+          mode = "end";
+        } else {
+          // 시작
+          const startKey = (field === "outing") ? "time" : "start";
+          arr.push({[startKey]: timeStr});
+          mode = "start";
+        }
+        tx.set(docRef, {[field]: arr, updatedAt: new Date().toISOString()}, {merge: true});
+      });
+      res.status(200).json({ok: true, doc: docName, field, mode, time: timeStr});
       return;
     }
 

@@ -7,6 +7,8 @@ import '../widgets/phase_sleep_card.dart';
 import '../widgets/sleep_plan_overview.dart';
 import '../widgets/media_detox_card.dart';
 import '../widgets/craving_card.dart';
+import '../widgets/life_logs_summary.dart';
+import '../widgets/meals_card.dart';
 
 /// DAILY 오늘 탭 — TODO 체크리스트 중심
 /// 상단: 날짜 + 오늘의 순서 (checkable)
@@ -39,6 +41,10 @@ class TodayPage extends StatelessWidget {
               MediaDetoxCard(),
               SizedBox(height: DailySpace.md),
               CravingCard(),
+              SizedBox(height: DailySpace.md),
+              MealsCard(),
+              SizedBox(height: DailySpace.md),
+              LifeLogsSummary(),
             ],
           ),
         ),
