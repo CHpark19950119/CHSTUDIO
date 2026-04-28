@@ -9,6 +9,7 @@ import '../widgets/media_detox_card.dart';
 import '../widgets/craving_card.dart';
 import '../widgets/life_logs_summary.dart';
 import '../widgets/meals_card.dart';
+import '../widgets/toggle_status_card.dart';
 
 /// DAILY 오늘 탭 — TODO 체크리스트 중심
 /// 상단: 날짜 + 오늘의 순서 (checkable)
@@ -31,6 +32,9 @@ class TodayPage extends StatelessWidget {
               // ★ 핵심 — 오늘의 순서 체크리스트
               RoutineChecklist(),
               SizedBox(height: DailySpace.lg),
+              // 진행 토글 (외출/식사 — 사용자 + HB 양방향)
+              ToggleStatusCard(),
+              SizedBox(height: DailySpace.md),
               // 상황 요약 (작게)
               SleepCard(),
               SizedBox(height: DailySpace.md),
