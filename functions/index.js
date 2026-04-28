@@ -811,9 +811,10 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       const allowedDoc = "life_logs/" + llMatchT[1];
       const docRef = db.doc("users/" + UID + "/" + allowedDoc);
 
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
+      // KST (UTC+9) 시각 — Cloud Functions 기본 UTC 회피
+      const nowKst = new Date(Date.now() + 9 * 3600 * 1000);
+      const hh = String(nowKst.getUTCHours()).padStart(2, "0");
+      const mm = String(nowKst.getUTCMinutes()).padStart(2, "0");
       const timeStr = `${hh}:${mm}`;
 
       let mode;
