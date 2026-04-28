@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../app/app.dart';
 import '../../theme/theme.dart';
+import '../widgets/common.dart';
 import '../widgets/phase_goal_card.dart';
 import '../widgets/sleep_card.dart';
 import '../widgets/phase_sleep_card.dart';
@@ -10,42 +11,49 @@ import '../widgets/sleep_plan_overview.dart';
 import '../widgets/craving_card.dart';
 import '../widgets/life_logs_summary.dart';
 
-/// 계획 탭 — 1차/2차 D-day · 수면 위상 · Detox · 토글 · 누적 통계
-/// 사용자 지시 2026-04-28 16:58 "홈 간결화 + 구체 카드 → 계획 탭 이관"
 class PlanPage extends StatelessWidget {
   const PlanPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: DailyPalette.paper,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
           children: [
-            const _Header(),
+            const HeroCard(
+              title: '계획',
+              subtitle: '시험 D-day · 수면 위상 · 누적 통계',
+              icon: Icons.flag_outlined,
+            ),
             const SizedBox(height: DailySpace.lg),
-            // 시험 D-day (1차·2차·3차)
+            SectionHeader(title: '시험 D-day', accent: DailyPalette.error),
+            const SizedBox(height: DailySpace.sm),
             const _ExamDDayCard(),
-            const SizedBox(height: DailySpace.md),
-            // Phase + 목표 (홈에서 이관)
+            const SizedBox(height: DailySpace.lg),
+            SectionHeader(title: 'Phase · 목표', accent: theme.colorScheme.primary),
+            const SizedBox(height: DailySpace.sm),
             const PhaseGoalCard(),
             const SizedBox(height: DailySpace.md),
-            // 수면 위상 14일 + Phase 1·2 plan
             const _PhaseCard(),
-            const SizedBox(height: DailySpace.md),
+            const SizedBox(height: DailySpace.lg),
+            SectionHeader(title: '수면 위상', accent: DailyPalette.sleep),
+            const SizedBox(height: DailySpace.sm),
             const SleepCard(),
             const SizedBox(height: DailySpace.md),
             const PhaseSleepCard(),
             const SizedBox(height: DailySpace.md),
             const SleepPlanOverview(),
-            const SizedBox(height: DailySpace.md),
-            // 갈망·기분 (Media Detox 카드 사용자 17:24 삭제 / Toggle 카드 17:24 삭제 / Meals 카드 통합)
+            const SizedBox(height: DailySpace.lg),
+            SectionHeader(title: '갈망·생활 누적', accent: DailyPalette.craving),
+            const SizedBox(height: DailySpace.sm),
             const CravingCard(),
             const SizedBox(height: DailySpace.md),
             const LifeLogsSummary(),
-            const SizedBox(height: DailySpace.md),
-            // 누적 통계
+            const SizedBox(height: DailySpace.lg),
+            SectionHeader(title: '누적 통계', accent: DailyPalette.gold),
+            const SizedBox(height: DailySpace.sm),
             const _Routine14(),
             const SizedBox(height: DailySpace.md),
             const _SleepPhase14(),
@@ -110,21 +118,6 @@ class _ExamDDayCard extends StatelessWidget {
             ],
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header();
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('계획', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
-        SizedBox(height: 4),
-        Text('시험 D-day · 수면 위상 · Detox · 누적 통계', style: TextStyle(fontSize: 12, color: DailyPalette.ash)),
       ],
     );
   }

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../app/app.dart';
 import '../../theme/theme.dart';
+import '../widgets/common.dart';
 
-/// 기록 탭 = 월간 캘린더 + 선택 날짜 상세
 class RecordsPage extends StatefulWidget {
   const RecordsPage({super.key});
 
@@ -24,29 +24,39 @@ class _RecordsPageState extends State<RecordsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: DailyPalette.paper,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
           children: [
-            const Text('기록', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
-            const SizedBox(height: 4),
-            Text(DateFormat('yyyy년 M월', 'ko').format(_anchor),
-                style: const TextStyle(fontSize: 12, color: DailyPalette.ash)),
+            HeroCard(
+              title: '기록',
+              subtitle: DateFormat('yyyy년 M월', 'ko').format(_anchor),
+              icon: Icons.calendar_month_outlined,
+            ),
             const SizedBox(height: DailySpace.lg),
-            _monthNav(),
-            const SizedBox(height: DailySpace.md),
-            _calendarGrid(),
+            SectionHeader(title: '월간 달력', accent: theme.colorScheme.primary),
+            const SizedBox(height: DailySpace.sm),
+            _monthNav(theme),
+            const SizedBox(height: DailySpace.sm),
+            _calendarGrid(theme),
             const SizedBox(height: DailySpace.lg),
-            if (_selected != null) _DayDetail(date: _selected!),
+            if (_selected != null) ...[
+              SectionHeader(
+                title: DateFormat('M월 d일 EEEE', 'ko').format(_selected!),
+                accent: DailyPalette.gold,
+              ),
+              const SizedBox(height: DailySpace.sm),
+              _DayDetail(date: _selected!),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _monthNav() {
+  Widget _monthNav(ThemeData theme) {
     return Row(
       children: [
         IconButton(
@@ -59,7 +69,7 @@ class _RecordsPageState extends State<RecordsPage> {
           child: Text(
             DateFormat('yyyy년 M월', 'ko').format(_anchor),
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: DailyPalette.ink),
+            style: theme.textTheme.titleMedium,
           ),
         ),
         IconButton(
@@ -72,7 +82,8 @@ class _RecordsPageState extends State<RecordsPage> {
     );
   }
 
-  Widget _calendarGrid() {
+  Widget _calendarGrid(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     final firstDay = DateTime(_anchor.year, _anchor.month, 1);
     final daysInMonth = DateTime(_anchor.year, _anchor.month + 1, 0).day;
     final startWeekday = firstDay.weekday % 7;  // 일=0, 월=1, ..., 토=6
@@ -97,9 +108,9 @@ class _RecordsPageState extends State<RecordsPage> {
         return Container(
           padding: const EdgeInsets.all(DailySpace.md),
           decoration: BoxDecoration(
-            color: DailyPalette.card,
+            color: isDark ? DailyPalette.cardDark : DailyPalette.card,
             borderRadius: BorderRadius.circular(DailySpace.radiusL),
-            border: Border.all(color: DailyPalette.line),
+            border: Border.all(color: isDark ? DailyPalette.lineDark : DailyPalette.line),
           ),
           child: Column(
             children: [
@@ -158,8 +169,8 @@ class _RecordsPageState extends State<RecordsPage> {
                                 color: isSelected
                                     ? Colors.white
                                     : has
-                                        ? DailyPalette.ink
-                                        : DailyPalette.fog,
+                                        ? (isDark ? DailyPalette.inkDark : DailyPalette.ink)
+                                        : (isDark ? DailyPalette.ashDark : DailyPalette.fog),
                               ),
                             ),
                           ),
@@ -186,6 +197,8 @@ class _DayDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final key = DateFormat('yyyy-MM-dd').format(date);
     final ref = FirebaseFirestore.instance.doc('users/$kUid/life_logs/$key');
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -195,20 +208,17 @@ class _DayDetail extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(DailySpace.lg),
           decoration: BoxDecoration(
-            color: DailyPalette.card,
+            color: isDark ? DailyPalette.cardDark : DailyPalette.card,
             borderRadius: BorderRadius.circular(DailySpace.radiusL),
-            border: Border.all(color: DailyPalette.line),
+            border: Border.all(color: isDark ? DailyPalette.lineDark : DailyPalette.line),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(DateFormat('M월 d일 EEEE', 'ko').format(date),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: DailyPalette.ink)),
-              const SizedBox(height: 12),
               if (data.isEmpty)
-                const Text('기록 없음', style: TextStyle(fontSize: 12, color: DailyPalette.ash))
+                Text('기록 없음', style: theme.textTheme.bodyMedium)
               else
-                ..._sections(data),
+                ..._sections(data, theme),
             ],
           ),
         );
@@ -216,7 +226,7 @@ class _DayDetail extends StatelessWidget {
     );
   }
 
-  List<Widget> _sections(Map<String, dynamic> data) {
+  List<Widget> _sections(Map<String, dynamic> data, ThemeData theme) {
     final out = <Widget>[];
 
     // ── 수면 카테고리 ──
@@ -239,7 +249,7 @@ class _DayDetail extends StatelessWidget {
             '~${n['wake_time'] ?? ''} (${n['duration_min'] ?? ''}분)${n['note'] != null ? ' · ${n['note']}' : ''}'));
       }
     }
-    if (sleepRows.isNotEmpty) out.add(_section('🛏️ 수면', sleepRows));
+    if (sleepRows.isNotEmpty) out.add(_section('🛏️ 수면', sleepRows, theme));
 
     // ── 식사 ──
     final mealRows = <Widget>[];
@@ -252,7 +262,7 @@ class _DayDetail extends StatelessWidget {
             '$menu${m['note'] != null ? ' · ${m['note']}' : ''}'));
       }
     }
-    if (mealRows.isNotEmpty) out.add(_section('🍽️ 식사', mealRows));
+    if (mealRows.isNotEmpty) out.add(_section('🍽️ 식사', mealRows, theme));
 
     // ── 외출·이동 ──
     final outRows = <Widget>[];
@@ -265,7 +275,7 @@ class _DayDetail extends StatelessWidget {
             '$dest${o['mode'] != null ? ' · ${o['mode']}' : ''}${o['note'] != null ? ' · ${o['note']}' : ''}'));
       }
     }
-    if (outRows.isNotEmpty) out.add(_section('🚶 외출', outRows));
+    if (outRows.isNotEmpty) out.add(_section('🚶 외출', outRows, theme));
 
     // ── 일상 plan ── (도메인 분리: 공부·시험 = STUDY 만, 여기선 plan/일상 메모 만)
     final planRows = <Widget>[];
@@ -277,7 +287,7 @@ class _DayDetail extends StatelessWidget {
         }
       }
     }
-    if (planRows.isNotEmpty) out.add(_section('📋 계획·메모', planRows));
+    if (planRows.isNotEmpty) out.add(_section('📋 계획·메모', planRows, theme));
 
     // ── 미디어 ──
     final mediaRows = <Widget>[];
@@ -287,7 +297,7 @@ class _DayDetail extends StatelessWidget {
             '${m['duration_min'] ?? ''}분 (${m['start'] ?? ''}~${m['end'] ?? ''})${m['note'] != null ? ' · ${m['note']}' : ''}'));
       }
     }
-    if (mediaRows.isNotEmpty) out.add(_section('📺 미디어', mediaRows));
+    if (mediaRows.isNotEmpty) out.add(_section('📺 미디어', mediaRows, theme));
 
     // ── 결제 ──
     final payRows = <Widget>[];
@@ -297,7 +307,7 @@ class _DayDetail extends StatelessWidget {
             '${p['place'] ?? ''} ${p['amount'] ?? ''}원 · ${p['service'] ?? ''}${p['note'] != null ? ' · ${p['note']}' : ''}'));
       }
     }
-    if (payRows.isNotEmpty) out.add(_section('💳 결제', payRows));
+    if (payRows.isNotEmpty) out.add(_section('💳 결제', payRows, theme));
 
     // ── 할일 ──
     final todoRows = <Widget>[];
@@ -307,7 +317,7 @@ class _DayDetail extends StatelessWidget {
             '${t['task'] ?? ''}${t['from'] != null ? ' (${t['from']})' : ''}'));
       }
     }
-    if (todoRows.isNotEmpty) out.add(_section('📋 할일', todoRows));
+    if (todoRows.isNotEmpty) out.add(_section('📋 할일', todoRows, theme));
 
     // ── 배변 ──
     final bowelRows = <Widget>[];
@@ -316,7 +326,7 @@ class _DayDetail extends StatelessWidget {
         bowelRows.add(_row('${b['time'] ?? ''}', b['status']?.toString() ?? ''));
       }
     }
-    if (bowelRows.isNotEmpty) out.add(_section('🚽 배변', bowelRows));
+    if (bowelRows.isNotEmpty) out.add(_section('🚽 배변', bowelRows, theme));
 
     // ── HB 작업 events ──
     final hbRows = <Widget>[];
@@ -325,12 +335,12 @@ class _DayDetail extends StatelessWidget {
         hbRows.add(_row('${e['time'] ?? ''} [${e['tag'] ?? ''}]', e['note']?.toString() ?? ''));
       }
     }
-    if (hbRows.isNotEmpty) out.add(_section('🤖 HB 작업', hbRows));
+    if (hbRows.isNotEmpty) out.add(_section('🤖 HB 작업', hbRows, theme));
 
     // ── 심리 ──
     if (data['psych'] is Map) {
       final p = data['psych'] as Map;
-      out.add(_section('🧠 심리', [_row('—', p.entries.map((e) => '${e.key}=${e.value}').join(' · '))]));
+      out.add(_section('🧠 심리', [_row('—', p.entries.map((e) => '${e.key}=${e.value}').join(' · '))], theme));
     }
 
     // ── 일반 events (위 섹션 미매칭) ──
@@ -343,144 +353,52 @@ class _DayDetail extends StatelessWidget {
         }
       }
     }
-    if (etcRows.isNotEmpty) out.add(_section('📌 기타', etcRows));
+    if (etcRows.isNotEmpty) out.add(_section('📌 기타', etcRows, theme));
 
     return out;
   }
 
-  Widget _section(String title, List<Widget> rows) => Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: DailyPalette.gold)),
-            const SizedBox(height: 8),
-            ...rows,
-          ],
-        ),
-      );
-
-  List<Widget> _rows(Map<String, dynamic> data) {
-    final widgets = <Widget>[];
-
-    // 기상 / 취침
-    if (data['wake'] is Map) {
-      final w = data['wake'] as Map;
-      widgets.add(_row('기상', '${w['time'] ?? '—'}${w['note'] != null ? ' · ${w['note']}' : ''}'));
-    }
-    if (data['sleep'] is Map) {
-      final s = data['sleep'] as Map;
-      widgets.add(_row('취침', '${s['time'] ?? '—'}${s['note'] != null ? ' · ${s['note']}' : ''}'));
-    }
-
-    // 늦잠
-    if (data['oversleep'] is Map) {
-      final o = data['oversleep'] as Map;
-      widgets.add(_row('늦잠', '${o['actual_wake'] ?? ''} (계획 ${o['planned_wake'] ?? ''}, +${o['deviation_min'] ?? ''}분)'));
-    }
-
-    // 낮잠
-    if (data['nap'] is List) {
-      for (final n in (data['nap'] as List).whereType<Map>()) {
-        widgets.add(_row('낮잠 ${n['time'] ?? ''}',
-            '~${n['wake_time'] ?? ''} (${n['duration_min'] ?? ''}분)${n['note'] != null ? ' · ${n['note']}' : ''}'));
-      }
-    }
-
-    // 식사
-    if (data['meals'] is List) {
-      for (final m in (data['meals'] as List).whereType<Map>()) {
-        final start = m['start'] ?? m['time'] ?? '';
-        final end = m['end'];
-        final menu = m['menu']?.toString() ?? '';
-        widgets.add(_row('식사 $start${end != null ? '~$end' : ''}',
-            '$menu${m['note'] != null ? ' · ${m['note']}' : ''}'));
-      }
-    }
-
-    // 외출
-    if (data['outing'] is List) {
-      for (final o in (data['outing'] as List).whereType<Map>()) {
-        final t = o['time'] ?? '';
-        final ret = o['returnHome'];
-        final dest = o['destination'] ?? '';
-        widgets.add(_row('외출 $t${ret != null ? '~$ret' : ''}',
-            '$dest${o['mode'] != null ? ' · ${o['mode']}' : ''}${o['note'] != null ? ' · ${o['note']}' : ''}'));
-      }
-    }
-
-    // 배변
-    if (data['bowel'] is List) {
-      for (final b in (data['bowel'] as List).whereType<Map>()) {
-        widgets.add(_row('배변 ${b['time'] ?? ''}', b['status']?.toString() ?? ''));
-      }
-    }
-
-    // 공부 (legacy)
-    if (data['study'] is List) {
-      for (final s in (data['study'] as List).whereType<Map>()) {
-        widgets.add(_row('공부 ${s['time'] ?? ''}',
-            '${s['subject'] ?? ''} · ${s['duration_min'] ?? ''}분 ${s['note'] ?? ''}'));
-      }
-    }
-
-    // 이벤트 (general)
-    if (data['events'] is List) {
-      for (final e in (data['events'] as List).whereType<Map>()) {
-        widgets.add(_row('이벤트 ${e['time'] ?? ''}',
-            '[${e['tag'] ?? ''}] ${e['note'] ?? ''}'));
-      }
-    }
-
-    // HB 작업 events
-    if (data['events_hb'] is List) {
-      for (final e in (data['events_hb'] as List).whereType<Map>()) {
-        widgets.add(_row('HB ${e['time'] ?? ''}',
-            '[${e['tag'] ?? ''}] ${e['note'] ?? ''}'));
-      }
-    }
-
-    // 미디어 (쇼츠 등)
-    if (data['media'] is List) {
-      for (final m in (data['media'] as List).whereType<Map>()) {
-        widgets.add(_row('미디어 ${m['type'] ?? ''}',
-            '${m['duration_min'] ?? ''}분 (${m['start'] ?? ''}~${m['end'] ?? ''})${m['note'] != null ? ' · ${m['note']}' : ''}'));
-      }
-    }
-
-    // 결제
-    if (data['payments'] is List) {
-      for (final p in (data['payments'] as List).whereType<Map>()) {
-        widgets.add(_row('결제 ${p['time'] ?? ''}',
-            '${p['place'] ?? ''} ${p['amount'] ?? ''}원 · ${p['service'] ?? ''}${p['note'] != null ? ' · ${p['note']}' : ''}'));
-      }
-    }
-
-    // 할 일
-    if (data['todos'] is List) {
-      for (final t in (data['todos'] as List).whereType<Map>()) {
-        widgets.add(_row('할일 ${t['priority'] ?? ''}',
-            '${t['task'] ?? ''}${t['from'] != null ? ' (${t['from']})' : ''}'));
-      }
-    }
-
-    // 심리 / 노트
-    if (data['psych'] is Map) {
-      final p = data['psych'] as Map;
-      widgets.add(_row('심리', p.entries.map((e) => '${e.key}=${e.value}').join(' · ')));
-    }
-
-    return widgets;
+  Widget _section(String title, List<Widget> rows, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? DailyPalette.paperDark : DailyPalette.paper,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: isDark ? DailyPalette.lineDark : DailyPalette.line, width: 0.8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: isDark ? DailyPalette.gold.withValues(alpha: 0.18) : DailyPalette.goldSurface,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(height: 8),
+          ...rows,
+        ],
+      ),
+    );
   }
 
-  Widget _row(String l, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(width: 92, child: Text(l, style: const TextStyle(fontSize: 12, color: DailyPalette.ash, fontWeight: FontWeight.w500))),
-            Expanded(child: Text(v, style: const TextStyle(fontSize: 14, color: DailyPalette.ink, height: 1.4))),
-          ],
-        ),
+  Widget _row(String l, String v) => Builder(
+        builder: (ctx) {
+          final t = Theme.of(ctx);
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 92, child: Text(l, style: t.textTheme.labelMedium)),
+                Expanded(child: Text(v, style: t.textTheme.bodyMedium?.copyWith(height: 1.4))),
+              ],
+            ),
+          );
+        },
       );
 }

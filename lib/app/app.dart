@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/theme.dart';
 import '../ui/home_shell.dart';
+import '../ui/onboarding/onboarding_screen.dart';
 
 class DailyApp extends StatelessWidget {
   const DailyApp({super.key});
@@ -13,8 +14,37 @@ class DailyApp extends StatelessWidget {
       theme: buildDailyTheme(brightness: Brightness.light),
       darkTheme: buildDailyTheme(brightness: Brightness.dark),
       themeMode: ThemeMode.system,
-      home: const HomeShell(),
+      home: const _RootGate(),
     );
+  }
+}
+
+class _RootGate extends StatefulWidget {
+  const _RootGate();
+  @override
+  State<_RootGate> createState() => _RootGateState();
+}
+
+class _RootGateState extends State<_RootGate> {
+  bool? _showOnboarding;
+
+  @override
+  void initState() {
+    super.initState();
+    shouldShowDailyOnboarding().then((show) {
+      if (mounted) setState(() => _showOnboarding = show);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showOnboarding == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_showOnboarding!) {
+      return OnboardingScreen(onDone: () => setState(() => _showOnboarding = false));
+    }
+    return const HomeShell();
   }
 }
 
