@@ -31,32 +31,30 @@ class PhaseGoalCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8, runSpacing: 6,
             children: [
               _badge('Phase 1', DailyPalette.primary),
-              const SizedBox(width: 6),
               _badge('D$phaseDay/$phase1Total', DailyPalette.gold),
-              const SizedBox(width: 6),
               _badge('시험 D-$dDay', DailyPalette.error),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           _line('기상 타깃', wakeTarget),
           _line('취침 타깃', sleepTarget),
           _line('순공 목표', '4시간+ (Phase1 진행 중 단계 ↑)'),
-          _line('미디어 detox', 'Stage 1 — 쇼츠 제한'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
               color: DailyPalette.goldSurface,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               phaseDay <= 7
                   ? '🌅 D1-D7 = 위상 진전 (08:30/01:30)'
                   : '🌄 D8-D14 = 위상 안정 (07:30/23:30)',
-              style: const TextStyle(fontSize: 11, color: DailyPalette.ink),
+              style: const TextStyle(fontSize: 13, color: DailyPalette.ink, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -65,21 +63,21 @@ class PhaseGoalCard extends StatelessWidget {
   }
 
   Widget _badge(String text, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: color, width: 1),
         ),
-        child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+        child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
       );
 
   Widget _line(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         child: Row(
           children: [
-            SizedBox(width: 84, child: Text(label, style: const TextStyle(fontSize: 11, color: DailyPalette.ash))),
-            Expanded(child: Text(value, style: const TextStyle(fontSize: 12, color: DailyPalette.ink, fontWeight: FontWeight.w600))),
+            SizedBox(width: 96, child: Text(label, style: const TextStyle(fontSize: 13, color: DailyPalette.ash, fontWeight: FontWeight.w500))),
+            Expanded(child: Text(value, style: const TextStyle(fontSize: 14, color: DailyPalette.ink, fontWeight: FontWeight.w700))),
           ],
         ),
       );

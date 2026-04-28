@@ -110,7 +110,7 @@ class _RecordsPageState extends State<RecordsPage> {
                       child: Text(
                         e.value,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: e.key == 0 ? DailyPalette.error : (e.key == 6 ? DailyPalette.info : DailyPalette.ash),
                         ),
@@ -126,7 +126,7 @@ class _RecordsPageState extends State<RecordsPage> {
                     final cellIdx = weekIdx * 7 + col;
                     final dayNum = cellIdx - startWeekday + 1;
                     if (dayNum < 1 || dayNum > daysInMonth) {
-                      return const Expanded(child: SizedBox(height: 38));
+                      return const Expanded(child: SizedBox(height: 46));
                     }
                     final date = DateTime(_anchor.year, _anchor.month, dayNum);
                     final key = DateFormat('yyyy-MM-dd').format(date);
@@ -138,7 +138,7 @@ class _RecordsPageState extends State<RecordsPage> {
                         onTap: () => setState(() => _selected = date),
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          height: 38,
+                          height: 46,
                           margin: const EdgeInsets.all(2),
                           decoration: BoxDecoration(
                             color: isSelected
@@ -153,8 +153,8 @@ class _RecordsPageState extends State<RecordsPage> {
                             child: Text(
                               '$dayNum',
                               style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: (has || isToday) ? FontWeight.w700 : FontWeight.w400,
+                                fontSize: 16,
+                                fontWeight: (has || isToday) ? FontWeight.w700 : FontWeight.w500,
                                 color: isSelected
                                     ? Colors.white
                                     : has
@@ -203,7 +203,7 @@ class _DayDetail extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(DateFormat('M월 d일 EEEE', 'ko').format(date),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: DailyPalette.ink)),
               const SizedBox(height: 12),
               if (data.isEmpty)
                 const Text('기록 없음', style: TextStyle(fontSize: 12, color: DailyPalette.ash))
@@ -361,12 +361,12 @@ class _DayDetail extends StatelessWidget {
   }
 
   Widget _section(String title, List<Widget> rows) => Padding(
-        padding: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.only(bottom: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DailyPalette.gold)),
-            const SizedBox(height: 6),
+            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: DailyPalette.gold)),
+            const SizedBox(height: 8),
             ...rows,
           ],
         ),
@@ -486,12 +486,12 @@ class _DayDetail extends StatelessWidget {
   }
 
   Widget _row(String l, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
+        padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 82, child: Text(l, style: const TextStyle(fontSize: 11, color: DailyPalette.ash))),
-            Expanded(child: Text(v, style: const TextStyle(fontSize: 13, color: DailyPalette.ink))),
+            SizedBox(width: 92, child: Text(l, style: const TextStyle(fontSize: 12, color: DailyPalette.ash, fontWeight: FontWeight.w500))),
+            Expanded(child: Text(v, style: const TextStyle(fontSize: 14, color: DailyPalette.ink, height: 1.4))),
           ],
         ),
       );

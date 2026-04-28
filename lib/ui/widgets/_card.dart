@@ -32,10 +32,10 @@ class DailyCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: DailyPalette.primary),
-              const SizedBox(width: 6),
+              Icon(icon, size: 20, color: DailyPalette.primary),
+              const SizedBox(width: 8),
               Text(title,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
             ],
           ),
           const SizedBox(height: DailySpace.md),
