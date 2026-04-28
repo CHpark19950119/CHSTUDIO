@@ -267,29 +267,17 @@ class _DayDetail extends StatelessWidget {
     }
     if (outRows.isNotEmpty) out.add(_section('🚶 외출', outRows));
 
-    // ── 공부·이벤트 ──
-    final studyRows = <Widget>[];
-    if (data['study'] is List) {
-      for (final s in (data['study'] as List).whereType<Map>()) {
-        studyRows.add(_row(s['time']?.toString() ?? '',
-            '${s['subject'] ?? ''} · ${s['duration_min'] ?? ''}분 ${s['note'] ?? ''}'));
-      }
-    }
+    // ── 일상 plan ── (도메인 분리: 공부·시험 = STUDY 만, 여기선 plan/일상 메모 만)
+    final planRows = <Widget>[];
     if (data['events'] is List) {
       for (final e in (data['events'] as List).whereType<Map>()) {
         final tag = e['tag']?.toString() ?? '';
-        // 공부 관련 events 만 이 섹션
-        if (tag.contains('study') || tag == 'focus' || tag == 'break_start' || tag == 'plan') {
-          studyRows.add(_row('${e['time'] ?? ''} [$tag]', e['note']?.toString() ?? ''));
+        if (tag == 'plan') {
+          planRows.add(_row(e['time']?.toString() ?? '', e['note']?.toString() ?? ''));
         }
       }
     }
-    if (data['exam_answers'] is Map) {
-      final ea = data['exam_answers'] as Map;
-      studyRows.add(_row('답안 ${ea['submitted_at'] ?? ''}',
-          '${ea['exam'] ?? ''} · ${ea['answer_str'] ?? ''} (graded=${ea['graded']})'));
-    }
-    if (studyRows.isNotEmpty) out.add(_section('📖 공부·시험', studyRows));
+    if (planRows.isNotEmpty) out.add(_section('📋 계획·메모', planRows));
 
     // ── 미디어 ──
     final mediaRows = <Widget>[];
