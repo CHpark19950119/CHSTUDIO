@@ -1,5 +1,5 @@
-// 오늘 일정 timeline — wake / outing / meals / events / payments / sleep target 시간순.
-// 사용자 지시 (2026-04-28 16:58): 홈 = 그날 일정 + 그날 순서 만 간결.
+// 오늘 일정 timeline — 시간순 정리, 중복 제거, tag 한글 매핑.
+// 사용자 지시 (2026-04-28 16:58 + 17:22): 그날 일정 + "지저분하지 않게".
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -24,9 +24,7 @@ class TodayTimeline extends StatelessWidget {
           icon: Icons.timeline_outlined,
           child: entries.isEmpty
               ? const Text('기록 없음', style: TextStyle(fontSize: 12, color: DailyPalette.ash))
-              : Column(
-                  children: entries.map((e) => _row(e)).toList(),
-                ),
+              : Column(children: entries.map(_row).toList()),
         );
       },
     );
@@ -38,38 +36,48 @@ class TodayTimeline extends StatelessWidget {
     if (data['wake'] is Map) {
       final w = data['wake'] as Map;
       final t = w['time']?.toString();
-      if (t != null) list.add(_Entry(t, '🌅', '기상', w['note']?.toString()));
+      if (t != null) list.add(_Entry(t, '🌅', '기상', null));
     }
 
+    // 식사 — start~end 한 줄로 합침
     if (data['meals'] is List) {
       for (final m in (data['meals'] as List).whereType<Map>()) {
         final s = (m['start'] ?? m['time'])?.toString();
         final e = m['end']?.toString();
         if (s != null) {
-          list.add(_Entry(s, '🍽️', '식사 시작', e != null ? '~$e' : '진행 중'));
+          final timeRange = e != null ? '$s~$e' : '$s~';
+          list.add(_Entry(s, '🍽️', '식사', e == null ? '진행 중' : null, displayTime: timeRange));
         }
       }
     }
 
+    // 외출 — time~returnHome 한 줄
     if (data['outing'] is List) {
       for (final o in (data['outing'] as List).whereType<Map>()) {
         final t = o['time']?.toString();
         final r = o['returnHome']?.toString();
         if (t != null) {
-          final dest = o['destination']?.toString() ?? '';
-          list.add(_Entry(t, '🚶', '외출', '$dest${r != null ? ' (귀가 $r)' : ' (진행 중)'}'));
+          final dest = (o['destination']?.toString() ?? '').trim();
+          final timeRange = r != null ? '$t~$r' : '$t~';
+          list.add(_Entry(t, '🚶', '외출', dest.isEmpty ? (r == null ? '진행 중' : null) : dest, displayTime: timeRange));
         }
       }
     }
 
+    // events — 한글 tag + dedup (같은 시각·같은 tag = 1건만)
+    final seen = <String>{};
     if (data['events'] is List) {
       for (final e in (data['events'] as List).whereType<Map>()) {
         final t = e['time']?.toString();
-        if (t != null) {
-          final tag = e['tag']?.toString() ?? '';
-          final emoji = _emojiForTag(tag);
-          list.add(_Entry(t, emoji, tag, e['note']?.toString()));
-        }
+        if (t == null) continue;
+        final tag = e['tag']?.toString() ?? '';
+        final key = '$t|$tag';
+        if (seen.contains(key)) continue;
+        seen.add(key);
+        final mapping = _tagMap(tag);
+        if (mapping == null) continue; // 무시 가능 tag
+        final note = _cleanNote(e['note']?.toString() ?? '', tag);
+        list.add(_Entry(t, mapping.$1, mapping.$2, note));
       }
     }
 
@@ -77,8 +85,9 @@ class TodayTimeline extends StatelessWidget {
       for (final p in (data['payments'] as List).whereType<Map>()) {
         final t = p['time']?.toString();
         if (t != null) {
-          list.add(_Entry(t, '💳',
-              '결제 ${p['place'] ?? ''} ${p['amount'] ?? ''}원', p['service']?.toString()));
+          final place = p['place']?.toString() ?? '';
+          final amount = p['amount'];
+          list.add(_Entry(t, '💳', '결제', '$place${amount != null ? ' $amount원' : ''}'));
         }
       }
     }
@@ -86,7 +95,7 @@ class TodayTimeline extends StatelessWidget {
     if (data['sleep'] is Map) {
       final s = data['sleep'] as Map;
       final t = s['time']?.toString();
-      if (t != null) list.add(_Entry(t, '🛏️', '취침', s['note']?.toString()));
+      if (t != null) list.add(_Entry(t, '🛏️', '취침', null));
     }
 
     list.sort((a, b) => _normalize(a.time).compareTo(_normalize(b.time)));
@@ -94,38 +103,59 @@ class TodayTimeline extends StatelessWidget {
   }
 
   String _normalize(String t) {
-    // "01:30+1" 같은 다음날 표기 처리
     if (t.contains('+')) return '24:${t.split(':').last.split('+').first}';
     return t;
   }
 
-  String _emojiForTag(String tag) {
-    if (tag.contains('study') || tag == 'focus') return '📖';
-    if (tag.contains('break')) return '☕';
-    if (tag.contains('meal')) return '🍽️';
-    if (tag.contains('hygiene') || tag.contains('샤워')) return '🚿';
-    if (tag.contains('plan')) return '📋';
-    if (tag.contains('date')) return '💞';
-    return '📌';
+  /// tag → (emoji, label). null = 표시 X.
+  (String, String)? _tagMap(String tag) {
+    final t = tag.toLowerCase();
+    if (t == 'meal_start' || t == 'meal_end') return null; // meals 배열에서 이미 표시
+    if (t == 'focus' || t == 'study_start') return ('📖', '공부');
+    if (t.contains('break')) return ('☕', '휴식');
+    if (t.contains('hygiene') || t.contains('샤워')) return ('🚿', '샤워');
+    if (t.contains('plan')) return ('📋', '계획');
+    if (t.contains('date')) return ('💞', '데이트');
+    return ('📌', tag);
+  }
+
+  /// note 정리 — raw "subject=...mode=..." 같은 영문 키밸류 한글화.
+  String? _cleanNote(String note, String tag) {
+    if (note.isEmpty) return null;
+    String s = note;
+    // subject=X mode=Y → "X (Y)"
+    final m = RegExp(r'subject=(\S+)\s+mode=(\S+)').firstMatch(s);
+    if (m != null) {
+      final subject = m.group(1) ?? '';
+      final mode = m.group(2) ?? '';
+      s = subject.isEmpty ? mode : '$subject${mode.isNotEmpty ? ' ($mode)' : ''}';
+    }
+    return s.isEmpty ? null : s;
   }
 
   Widget _row(_Entry e) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 50, child: Text(e.time, style: const TextStyle(fontSize: 12, color: DailyPalette.slate, fontWeight: FontWeight.w700))),
+            SizedBox(
+              width: 70,
+              child: Text(e.displayTime ?? e.time,
+                  style: const TextStyle(fontSize: 11, color: DailyPalette.slate, fontWeight: FontWeight.w700)),
+            ),
             Text(e.emoji, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 6),
             Expanded(
-              child: RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(text: e.label, style: const TextStyle(fontSize: 12, color: DailyPalette.ink, fontWeight: FontWeight.w600)),
-                    if (e.note != null && e.note!.isNotEmpty)
-                      TextSpan(text: '  ${e.note}', style: const TextStyle(fontSize: 11, color: DailyPalette.ash, fontWeight: FontWeight.w400)),
-                  ],
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(e.label, style: const TextStyle(fontSize: 13, color: DailyPalette.ink, fontWeight: FontWeight.w600)),
+                  if (e.note != null && e.note!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(e.note!, style: const TextStyle(fontSize: 11, color: DailyPalette.ash, height: 1.3)),
+                    ),
+                ],
               ),
             ),
           ],
@@ -135,8 +165,9 @@ class TodayTimeline extends StatelessWidget {
 
 class _Entry {
   final String time;
+  final String? displayTime;
   final String emoji;
   final String label;
   final String? note;
-  _Entry(this.time, this.emoji, this.label, this.note);
+  _Entry(this.time, this.emoji, this.label, this.note, {this.displayTime});
 }
