@@ -44,6 +44,19 @@ class DailySpace {
   static const double elevSm = 1, elevMd = 2, elevLg = 4;
 }
 
+/// Material 3 Expressive 비대칭 코너 (Trendy v4 · 사용자 명시 1431·1433).
+class DailyRadius {
+  DailyRadius._();
+  static const expressive = BorderRadius.only(
+    topLeft: Radius.circular(32),
+    topRight: Radius.circular(12),
+    bottomLeft: Radius.circular(12),
+    bottomRight: Radius.circular(32),
+  );
+  static const card = BorderRadius.all(Radius.circular(24));
+  static const chip = BorderRadius.all(Radius.circular(14));
+}
+
 /// Soft Neumorphism 2.0 + Botanical Organic 결합 — Kit 3+9 정합 (사용자 명세 22:15).
 class DailyShadow {
   DailyShadow._();

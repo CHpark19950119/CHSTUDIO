@@ -38,7 +38,7 @@ class HeroCard extends StatelessWidget {
           colors: colors,
           begin: Alignment.topLeft, end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(DailySpace.radiusXXL),
+        borderRadius: DailyRadius.expressive,
         border: Border.all(color: theme.dividerTheme.color ?? DailyPalette.line, width: 0.6),
         boxShadow: DailyShadow.hero(isDark: isDark),
       ),
