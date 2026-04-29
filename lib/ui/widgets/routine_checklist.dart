@@ -35,12 +35,14 @@ class _RoutineChecklistState extends State<RoutineChecklist> {
           byBlock.putIfAbsent(b, () => []).add(s);
         }
 
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Container(
           padding: const EdgeInsets.all(DailySpace.lg),
           decoration: BoxDecoration(
-            color: DailyPalette.card,
-            borderRadius: BorderRadius.circular(DailySpace.radiusL),
-            border: Border.all(color: DailyPalette.line),
+            color: isDark ? DailyPalette.cardDark : DailyPalette.card,
+            borderRadius: BorderRadius.circular(DailySpace.radiusXXL),
+            border: Border.all(color: isDark ? DailyPalette.lineDark : DailyPalette.line, width: 0.6),
+            boxShadow: DailyShadow.soft(isDark: isDark),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

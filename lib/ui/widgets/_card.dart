@@ -20,12 +20,14 @@ class DailyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final content = Container(
       padding: const EdgeInsets.all(DailySpace.lg),
       decoration: BoxDecoration(
-        color: tint ?? DailyPalette.card,
-        borderRadius: BorderRadius.circular(DailySpace.radiusL),
-        border: Border.all(color: DailyPalette.line),
+        color: tint ?? (isDark ? DailyPalette.cardDark : DailyPalette.card),
+        borderRadius: BorderRadius.circular(DailySpace.radiusXXL),
+        border: Border.all(color: isDark ? DailyPalette.lineDark : DailyPalette.line, width: 0.6),
+        boxShadow: DailyShadow.soft(isDark: isDark),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +47,7 @@ class DailyCard extends StatelessWidget {
     );
     if (onTap == null) return content;
     return InkWell(
-      borderRadius: BorderRadius.circular(DailySpace.radiusL),
+      borderRadius: BorderRadius.circular(DailySpace.radiusXXL),
       onTap: onTap,
       child: content,
     );

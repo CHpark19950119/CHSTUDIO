@@ -15,7 +15,7 @@ import json, base64, sys, os, time
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), ".pickko_token")
 
 # 현재 토큰
-CURRENT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbWJObyI6Ijk3QUY5MjRDLUFBMzItNEQ0MS1CRDhELUFEQTQ0MkUzMEU0QyIsImFtYlBob25lIjoiMDEwMjQzNTgwNjciLCJhbWJOYW1lIjoi67CV7LKc7ZmNIiwiYW1iQmlydGgiOiIxOTk1LTAxLTE5IiwiYW1iR2VuZGVyIjoibWFsZSIsImlhdCI6MTc3NDU0MjczMywiZXhwIjoxNzc3MTM0NzMzfQ.gO7ohevXlACzPE5gamg8xuxOjl5t23Z-e5vqS7wak34"
+CURRENT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbWJObyI6Ijk3QUY5MjRDLUFBMzItNEQ0MS1CRDhELUFEQTQ0MkUzMEU0QyIsImFtYlBob25lIjoiMDEwMjQzNTgwNjciLCJhbWJOYW1lIjoi67CV7LKc7ZmNIiwiYW1iQmlydGgiOiIxOTk1LTAxLTE5IiwiYW1iR2VuZGVyIjoibWFsZSIsImlhdCI6MTc3NzI4NDM3MiwiZXhwIjoxNzc5ODc2MzcyfQ.p-Ne32MSPuAE9tKFjZgorHQAA3lW8VHwcHYgNoPRVxk"
 
 def decode_jwt(token):
     payload = token.split('.')[1]

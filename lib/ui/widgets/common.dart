@@ -29,6 +29,7 @@ class HeroCard extends StatelessWidget {
         (theme.brightness == Brightness.dark
             ? [DailyPalette.cardDark, DailyPalette.paperDark]
             : [DailyPalette.cream, DailyPalette.goldSurface]);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: padding,
@@ -37,8 +38,9 @@ class HeroCard extends StatelessWidget {
           colors: colors,
           begin: Alignment.topLeft, end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(DailySpace.radiusXL),
+        borderRadius: BorderRadius.circular(DailySpace.radiusXXL),
         border: Border.all(color: theme.dividerTheme.color ?? DailyPalette.line, width: 0.6),
+        boxShadow: DailyShadow.hero(isDark: isDark),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

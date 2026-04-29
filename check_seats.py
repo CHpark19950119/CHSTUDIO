@@ -1,9 +1,14 @@
-"""루카 스터디카페 군포점 — 실시간 좌석 현황 조회"""
+"""스터디카페 실시간 좌석 현황 — 멀티 매장 매핑."""
 import urllib.request, json, sys
 
-TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbWJObyI6Ijk3QUY5MjRDLUFBMzItNEQ0MS1CRDhELUFEQTQ0MkUzMEU0QyIsImFtYlBob25lIjoiMDEwMjQzNTgwNjciLCJhbWJOYW1lIjoi67CV7LKc7ZmNIiwiYW1iQmlydGgiOiIxOTk1LTAxLTE5IiwiYW1iR2VuZGVyIjoibWFsZSIsImlhdCI6MTc3NDU0MjczMywiZXhwIjoxNzc3MTM0NzMzfQ.gO7ohevXlACzPE5gamg8xuxOjl5t23Z-e5vqS7wak34"
-SP_NO = 1109
+TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbWJObyI6Ijk3QUY5MjRDLUFBMzItNEQ0MS1CRDhELUFEQTQ0MkUzMEU0QyIsImFtYlBob25lIjoiMDEwMjQzNTgwNjciLCJhbWJOYW1lIjoi67CV7LKc7ZmNIiwiYW1iQmlydGgiOiIxOTk1LTAxLTE5IiwiYW1iR2VuZGVyIjoibWFsZSIsImlhdCI6MTc3NzI4NDM3MiwiZXhwIjoxNzc5ODc2MzcyfQ.p-Ne32MSPuAE9tKFjZgorHQAA3lW8VHwcHYgNoPRVxk"
 API = "https://data.space-force.kr"
+
+# spNo 매핑 — 루카만 확정. 작심 군포부곡 spNo 미상 (master 에 spTitle row 없음, 사용자 v2 도면 검증으로 785 가설 기각).
+SHOPS = {
+    "luca": {"spNo": 1109, "title": "루카 군포점"},
+}
+
 
 def api_post(path, body=None):
     data = json.dumps(body or {}).encode()
@@ -13,70 +18,86 @@ def api_post(path, body=None):
     })
     return json.loads(urllib.request.urlopen(req, timeout=10).read())
 
+
 def api_get(path):
     req = urllib.request.Request(f"{API}{path}", headers={
         "nuj-authorization": f"Bearer {TOKEN}",
     })
     return json.loads(urllib.request.urlopen(req, timeout=10).read())
 
-def get_seats():
-    """좌석 타입별 잔여 현황"""
-    tickets = api_get(f"/app/shop/ticket/{SP_NO}")
+
+def get_seats(sp_no):
+    """좌석 타입별 잔여."""
+    tickets = api_get(f"/app/shop/ticket/{sp_no}")
     seat_types = []
+    seen = set()
     for category in tickets.get("data", {}).get("svcMenu", {}).values():
         for item in category.get("list", []):
             stc = item.get("SeatConfig", {})
             stc_no = stc.get("stcNo")
-            stc_title = stc.get("stcTitle", "?")
-            if stc_no and stc_no not in [s["stcNo"] for s in seat_types]:
-                seat_types.append({"stcNo": stc_no, "title": stc_title})
+            if stc_no and stc_no not in seen:
+                seen.add(stc_no)
+                seat_types.append({"stcNo": stc_no, "title": stc.get("stcTitle", "?")})
 
     results = []
     for st in seat_types:
         try:
-            resp = api_post("/app/seat/remain", {"spNo": SP_NO, "stcNo": st["stcNo"]})
+            resp = api_post("/app/seat/remain", {"spNo": sp_no, "stcNo": st["stcNo"]})
             count = resp.get("data", {}).get("seat", {}).get("count", "?")
             results.append({"type": st["title"], "stcNo": st["stcNo"], "remain": count})
-        except:
-            results.append({"type": st["title"], "stcNo": st["stcNo"], "remain": "error"})
-
+        except Exception as e:
+            results.append({"type": st["title"], "stcNo": st["stcNo"], "remain": f"err({e})"})
     return results
 
-def get_position():
-    """좌석 배치도 — 사용 중/빈 좌석"""
-    resp = api_get(f"/app/shop/position/{SP_NO}")
-    floors = resp.get("data", {}).get("position", [])
+
+def get_position(sp_no):
+    """구역별 사용/잔여 — usePosition 기준 (mbNo 만 보면 누락 있음)."""
+    resp = api_get(f"/app/shop/position/{sp_no}")
+    data = resp.get("data", {})
+    floors = data.get("position", [])
+    use_pos = data.get("usePosition") or {}
     summary = []
     for floor in floors:
         seats = floor.get("seats", [])
         if not seats:
             continue
         total = len(seats)
-        occupied = sum(1 for s in seats if s.get("mbNo"))
-        available = total - occupied
-        name = floor.get("strName", "").encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+        occupied = sum(1 for s in seats if s.get("stNo") in use_pos or s.get("mbNo"))
         summary.append({
-            "floor": name or f"구역{floor.get('strNo','')}",
+            "floor": floor.get("strName") or f"구역{floor.get('strNo','')}",
             "total": total,
             "occupied": occupied,
-            "available": available,
+            "available": total - occupied,
         })
     return summary
 
+
+def report(key):
+    info = SHOPS[key]
+    sp_no = info["spNo"]
+    print(f"\n{info['title']} (spNo {sp_no})")
+    print("=" * 50)
+
+    print("\n[좌석 타입별 잔여]")
+    for s in get_seats(sp_no):
+        print(f"  {s['type']:12s} (stcNo {s['stcNo']:5}): {s['remain']}석 남음")
+
+    print("\n[구역별 현황]")
+    for f in get_position(sp_no):
+        print(f"  {f['floor']}: {f['available']}/{f['total']}석 빈자리")
+
+
 if __name__ == "__main__":
-    import sys
     if sys.platform == "win32":
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-    print("루카 스터디카페 군포점")
-    print("=" * 40)
-
-    print("\n[좌석 타입별 잔여]")
-    for s in get_seats():
-        print(f"  {s['type']}: {s['remain']}석 남음")
-
-    print("\n[구역별 현황]")
-    for f in get_position():
-        print(f"  {f['floor']}: {f['available']}/{f['total']}석 빈자리")
-
+    targets = sys.argv[1:] if len(sys.argv) > 1 else list(SHOPS.keys())
+    for key in targets:
+        if key not in SHOPS:
+            print(f"unknown shop: {key} (available: {', '.join(SHOPS)})")
+            continue
+        try:
+            report(key)
+        except Exception as e:
+            print(f"\n[{key}] error: {e}")
     print()

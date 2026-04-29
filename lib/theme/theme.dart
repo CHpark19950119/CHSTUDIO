@@ -39,9 +39,39 @@ class DailyPalette {
 class DailySpace {
   DailySpace._();
   static const double xs = 4, sm = 8, md = 12, lg = 16, xl = 20, xxl = 28;
-  static const double radius = 10, radiusL = 14, radiusXL = 20;
+  static const double radius = 10, radiusL = 14, radiusXL = 20, radiusXXL = 28;
   // Elevation
   static const double elevSm = 1, elevMd = 2, elevLg = 4;
+}
+
+/// Soft Neumorphism 2.0 + Botanical Organic 결합 — Kit 3+9 정합 (사용자 명세 22:15).
+class DailyShadow {
+  DailyShadow._();
+  static List<BoxShadow> soft({bool isDark = false, double opacity = 1.0}) {
+    if (isDark) {
+      return [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.35 * opacity),
+          blurRadius: 18, offset: const Offset(0, 6),
+        ),
+        BoxShadow(
+          color: const Color(0xFF2C3530).withValues(alpha: 0.25 * opacity),
+          blurRadius: 6, offset: const Offset(0, 2),
+        ),
+      ];
+    }
+    return [
+      BoxShadow(
+        color: const Color(0xFF8B6F47).withValues(alpha: 0.10 * opacity),
+        blurRadius: 24, offset: const Offset(0, 8),
+      ),
+      BoxShadow(
+        color: const Color(0xFF2C2A26).withValues(alpha: 0.04 * opacity),
+        blurRadius: 6, offset: const Offset(0, 2),
+      ),
+    ];
+  }
+  static List<BoxShadow> hero({bool isDark = false}) => soft(isDark: isDark, opacity: 1.6);
 }
 
 const _textThemeLight = TextTheme(
