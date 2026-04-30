@@ -57,6 +57,73 @@ class DailyRadius {
   static const chip = BorderRadius.all(Radius.circular(14));
 }
 
+/// DAILY v12 luminous bento — STUDY v12 token DAILY 적용 (사용자 명시 2026-05-01 02:08).
+/// 사용 범위 = DAILY 모든 화면. 기존 DailyPalette 와 공존.
+class DailyV12 {
+  DailyV12._();
+
+  // Ambient gradient (배경)
+  static const ambient1 = Color(0xFFECD9B0);
+  static const ambient2 = Color(0xFFD4B88E);
+  static const ambient3 = Color(0xFFA88868);
+
+  // Ink (본문 텍스트)
+  static const ink = Color(0xFF1A1814);
+  static const ink2 = Color(0xFF3A352D);
+  static const ink3 = Color(0xFF5E5A53);
+  static const ink4 = Color(0xFF8A857C);
+
+  // Slate (hero 패널 · DAILY 는 warm clay 기반)
+  static const slate = Color(0xFF5A4B36);
+  static const slate2 = Color(0xFF3E3424);
+  static const slate3 = Color(0xFF241D14);
+
+  // Cream (hero 텍스트)
+  static const cream = Color(0xFFFFF8E0);
+  static const cream2 = Color(0xFFF0E0B8);
+  static const cream3 = Color(0xFFFAF1D6);
+
+  // Bronze (primary accent)
+  static const bronze = Color(0xFFB87020);
+  static const bronzeDeep = Color(0xFF824A14);
+  static const bronzeSoft = Color(0xFFD48A3A);
+  static const bronzeBright = Color(0xFFF0B860);
+
+  // Gold (secondary accent)
+  static const gold = Color(0xFFC8975B);
+  static const goldBright = Color(0xFFFFD478);
+
+  // Glass (카드 배경)
+  static Color glassLight = const Color(0xFFFFFAEB).withValues(alpha: 0.78);
+  static Color glassLight2 = const Color(0xFFF5EFE2).withValues(alpha: 0.82);
+  static Color glassEdge = const Color(0xFFFFFAEB).withValues(alpha: 0.92);
+
+  // Glow (라디얼)
+  static Color warmGlow = const Color(0xFFFFDC96).withValues(alpha: 0.7);
+  static Color bronzeGlow = const Color(0xFFD48A3A).withValues(alpha: 0.42);
+  static Color goldGlow = const Color(0xFFF0C060).withValues(alpha: 0.45);
+}
+
+/// v12 shape tokens.
+class DailyV12Radius {
+  DailyV12Radius._();
+  static const card = BorderRadius.all(Radius.circular(24));
+  static const bento = BorderRadius.all(Radius.circular(22));
+  static const capsule = BorderRadius.all(Radius.circular(999));
+  static const button = BorderRadius.all(Radius.circular(8));
+}
+
+/// v12 luminous shadow stack — embossed top + 4단 cinematic depth.
+class DailyV12Shadow {
+  DailyV12Shadow._();
+  static List<BoxShadow> card() => [
+        const BoxShadow(color: Color(0x14141C30), blurRadius: 2, offset: Offset(0, 1)),
+        const BoxShadow(color: Color(0x29141C30), blurRadius: 16, offset: Offset(0, 8)),
+        const BoxShadow(color: Color(0x3D141C30), blurRadius: 36, offset: Offset(0, 20)),
+        const BoxShadow(color: Color(0x52141C30), blurRadius: 72, offset: Offset(0, 40)),
+      ];
+}
+
 /// Soft Neumorphism 2.0 + Botanical Organic 결합 — Kit 3+9 정합 (사용자 명세 22:15).
 class DailyShadow {
   DailyShadow._();

@@ -41,46 +41,106 @@ class TodayPage extends StatelessWidget {
   }
 }
 
-/// Hero — 날짜 큰 글씨 + Phase + 시험 D-day badge.
+/// Hero · v12 luminous bento (cream/bronze gradient + warm glow + bronze gradient text).
+/// 사용자 명시 (2026-05-01 02:08): DAILY 디자인 전면 v12 적용.
 class _HeroToday extends StatelessWidget {
   const _HeroToday();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final now = DateTime.now();
     final exam = DateTime(2026, 7, 18);
     final dDay = exam.difference(DateTime(now.year, now.month, now.day)).inDays;
     final phase1Start = DateTime(2026, 4, 25);
     final phaseDay = now.difference(phase1Start).inDays + 1;
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.fromLTRB(26, 32, 26, 28),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [DailyPalette.primary.withValues(alpha: 0.25), DailyPalette.cardDark]
-              : [DailyPalette.cream, DailyPalette.goldSurface],
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF6E0), Color(0xFFFFEAC4), Color(0xFFF4D9A8)],
           begin: Alignment.topLeft, end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(DailySpace.radiusXL),
-        border: Border.all(color: theme.dividerTheme.color ?? DailyPalette.line, width: 0.6),
+        borderRadius: DailyV12Radius.card,
+        boxShadow: DailyV12Shadow.card(),
+        border: Border.all(color: DailyV12.bronze.withValues(alpha: 0.18), width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
         children: [
-          Text(DateFormat('yyyy.MM.dd EEEE', 'ko').format(now), style: theme.textTheme.labelMedium),
-          const SizedBox(height: 6),
-          Text('오늘', style: theme.textTheme.displayLarge?.copyWith(letterSpacing: -1.2)),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8, runSpacing: 8,
+          Positioned(
+            right: -50, top: -50,
+            child: Container(
+              width: 220, height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [DailyV12.bronzeGlow, DailyV12.bronzeGlow.withValues(alpha: 0)],
+                ),
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _badge('Phase 1 · D$phaseDay/14', DailyPalette.primary, theme),
-              _badge('시험 D-$dDay', DailyPalette.error, theme),
-              _badge(phaseDay <= 7 ? '08:30 / 01:30' : '07:30 / 23:30', DailyPalette.gold, theme),
+              Row(
+                children: [
+                  Text(
+                    DateFormat('yyyy.MM.dd EEEE', 'ko').format(now),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DailyV12.bronzeDeep, letterSpacing: 1.2),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: DailyV12.bronze.withValues(alpha: 0.16),
+                      borderRadius: DailyV12Radius.capsule,
+                      border: Border.all(color: DailyV12.bronze.withValues(alpha: 0.55)),
+                    ),
+                    child: Text(
+                      'Phase 1 · D$phaseDay/14',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: DailyV12.bronzeDeep, letterSpacing: 0.4),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  ShaderMask(
+                    shaderCallback: (rect) => const LinearGradient(
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                      colors: [Color(0xFFB87020), Color(0xFF824A14), Color(0xFF5A3008)],
+                      stops: [0, 0.55, 1.0],
+                    ).createShader(rect),
+                    blendMode: BlendMode.srcIn,
+                    child: Text(
+                      'D-$dDay',
+                      style: const TextStyle(
+                        fontSize: 80, fontWeight: FontWeight.w900,
+                        height: 0.95, letterSpacing: -3.2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                phaseDay <= 7 ? '오늘 취침/기상 = 08:30 / 01:30' : '오늘 취침/기상 = 07:30 / 23:30',
+                style: const TextStyle(fontSize: 13, color: DailyV12.ink2, height: 1.5, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 8, runSpacing: 8,
+                children: [
+                  _badge('Phase 1', DailyV12.bronzeDeep),
+                  _badge('시험 D-$dDay', DailyV12.bronze),
+                  _badge('plan v6.2', DailyV12.ink2),
+                ],
+              ),
             ],
           ),
         ],
@@ -88,7 +148,7 @@ class _HeroToday extends StatelessWidget {
     );
   }
 
-  Widget _badge(String text, Color color, ThemeData theme) => Container(
+  Widget _badge(String text, Color color) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.13),
