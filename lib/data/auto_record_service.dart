@@ -135,11 +135,9 @@ class AutoRecordService {
     }
   }
 
-  // ─── 앱 실행 자동 wake 후보 ───
-  // 07-15시 사이 앱 첫 실행 시 wake 자동 등재 (이미 기록되어있으면 skip).
+  // ─── 앱 실행 자동 wake 후보 (사용자 명시 2026-05-01 14:29 폐기) ───
+  // 사유: 앱 첫 실행 시각 ≠ 실제 기상 시각. HB 세션이 텔레 보고 받아 Firestore 직접 갱신.
   static Future<void> autoWakeCandidate() async {
-    final hour = DateTime.now().hour;
-    if (hour < 7 || hour >= 15) return;
-    await recordWake(note: '앱 실행 자동 후보');
+    return; // no-op · HB 세션이 wake 기록 owner
   }
 }
