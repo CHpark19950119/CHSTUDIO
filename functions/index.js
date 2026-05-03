@@ -2427,10 +2427,11 @@ async function dailyRolloverLogic() {
     recalculateMonthSummary(month).catch((e) =>
       console.error("Rollover summary error:", e.message));
 
-    // 7. Telegram notification
-    const msg = "🔄 CF 롤오버 완료\n" + savedDate + " → " + todayKey;
-    await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
-      {chat_id: MY_CHAT_ID, text: msg}).catch(() => {});
+    // 7. Telegram notification = OFF (사용자 지시 2026-05-04 04:21 KST · 새벽 4시 깨움 방지)
+    // 내부 rollover 로직은 유지 (archive·iot reset·month summary). 알림만 비활성화.
+    // const msg = "🔄 CF 롤오버 완료\n" + savedDate + " → " + todayKey;
+    // await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+    //   {chat_id: MY_CHAT_ID, text: msg}).catch(() => {});
 
     log.push("Rollover complete");
     return {rolled: true, from: savedDate, to: todayKey, log};

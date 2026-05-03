@@ -9,7 +9,7 @@ class DailyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DAILY',
+      title: 'Daily',
       debugShowCheckedModeBanner: false,
       theme: buildDailyTheme(brightness: Brightness.light),
       darkTheme: buildDailyTheme(brightness: Brightness.dark),

@@ -29,7 +29,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _pages = <_OnPage>[
     _OnPage(
       icon: Icons.wb_sunny_outlined,
-      title: 'DAILY 에 오신 걸 환영합니다',
+      title: 'Daily 에 오신 걸 환영합니다',
       body: '일상·수면·심리·식사·외출을 한 곳에 기록하고\n시각화해서 패턴을 찾는 앱입니다.',
       accent: 0xFF8B6F47,
     ),

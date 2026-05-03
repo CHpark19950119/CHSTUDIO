@@ -43,7 +43,7 @@
     </queries>
 
     <application
-        android:label="CHEONHONG DAILY"
+        android:label="Daily"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false"
