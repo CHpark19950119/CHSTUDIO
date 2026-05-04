@@ -1,49 +1,59 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// DAILY 계획 탭 — plan v6.2 발효 (HQ 1936 결재)
+// W1~W5+ 사다리 + Phase 1/2 시기별 일과.
+// 사용자 5/5 02:33 명시 = 단순·직관 / 핵심 4 기능.
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../../app/app.dart';
 import '../../theme/theme.dart';
 import '../widgets/common.dart';
-import '../widgets/sleep_card.dart';
-import '../widgets/sleep_plan_overview.dart';
-import '../widgets/craving_card.dart';
-import '../widgets/life_logs_summary.dart';
 
 class PlanPage extends StatelessWidget {
   const PlanPage({super.key});
 
+  static final _w1Start = DateTime(2026, 5, 5);
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final now = DateTime.now();
+    final daysFromW1 = now.difference(_w1Start).inDays;
+    final currentWeek = (daysFromW1 / 7).floor() + 1;
+    final isPhase1 = now.isBefore(DateTime(2026, 8, 15));
+
     return Scaffold(
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
           children: [
-            const HeroCard(
-              title: '계획',
-              subtitle: '수면 위상 · 갈망 · 생활 누적',
-              icon: Icons.flag_outlined,
+            _PhaseHeader(isPhase1: isPhase1, currentWeek: currentWeek),
+            const SizedBox(height: DailySpace.lg),
+            SectionHeader(title: '7주 사다리 · D-74 → 7/19', accent: DailyPalette.gold),
+            const SizedBox(height: DailySpace.sm),
+            _LadderCard(currentWeek: currentWeek),
+            const SizedBox(height: DailySpace.lg),
+            SectionHeader(title: 'Phase 시기별 일과', accent: theme.colorScheme.primary),
+            const SizedBox(height: DailySpace.sm),
+            _PhaseCard(
+              label: 'Phase 1 · 1차 PSAT 시기',
+              period: '2026-05-05 ~ 2026-07-19',
+              total: '10h',
+              t1: 'T1 4h · PSAT 자해 + 언논',
+              t2: 'T2 4h · PSAT 상판 + 헌법 강의',
+              t3: 'T3 2h · light 회독 + 정보 수급',
+              active: isPhase1,
+            ),
+            const SizedBox(height: DailySpace.sm),
+            _PhaseCard(
+              label: 'Phase 2 · 2차 시기',
+              period: '2026-08-15 ~ 2026-10-15',
+              total: '12h',
+              t1: 'T1 4h · 헌법',
+              t2: 'T2 4h · 국제법',
+              t3: 'T3 4h · 국정 + 이슈',
+              active: !isPhase1,
             ),
             const SizedBox(height: DailySpace.lg),
-            SectionHeader(title: '수면 위상', accent: DailyPalette.sleep),
+            SectionHeader(title: '24h 정착 routine', accent: DailyPalette.gold),
             const SizedBox(height: DailySpace.sm),
-            const SleepCard(),
-            const SizedBox(height: DailySpace.md),
-            const SleepPlanOverview(),
-            const SizedBox(height: DailySpace.lg),
-            SectionHeader(title: '갈망·생활 누적', accent: DailyPalette.craving),
-            const SizedBox(height: DailySpace.sm),
-            const CravingCard(),
-            const SizedBox(height: DailySpace.md),
-            const LifeLogsSummary(),
-            const SizedBox(height: DailySpace.lg),
-            SectionHeader(title: '누적 통계', accent: DailyPalette.gold),
-            const SizedBox(height: DailySpace.sm),
-            const _Routine14(),
-            const SizedBox(height: DailySpace.md),
-            const _SleepPhase14(),
-            const SizedBox(height: DailySpace.md),
-            const _DomainNote(),
+            const _RoutineCard(),
           ],
         ),
       ),
@@ -51,25 +61,120 @@ class PlanPage extends StatelessWidget {
   }
 }
 
-class _DomainNote extends StatelessWidget {
-  const _DomainNote();
+class _PhaseHeader extends StatelessWidget {
+  final bool isPhase1;
+  final int currentWeek;
+  const _PhaseHeader({required this.isPhase1, required this.currentWeek});
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dDay = DateTime(2026, 7, 19).difference(DateTime.now()).inDays;
     return Container(
-      padding: const EdgeInsets.all(DailySpace.md),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: DailyPalette.goldSurface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: DailyPalette.gold, width: 0.8),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [DailyPalette.goldSurface, DailyPalette.cream],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: DailyPalette.gold.withValues(alpha: 0.3)),
       ),
-      child: const Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, size: 16, color: DailyPalette.gold),
-          SizedBox(width: 8),
+          Text('plan v6.2 발효',
+              style: theme.textTheme.bodySmall?.copyWith(color: DailyPalette.gold, fontWeight: FontWeight.w600, letterSpacing: 1.0)),
+          const SizedBox(height: 6),
+          Text(
+            'W$currentWeek · D-$dDay',
+            style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isPhase1 ? '1차 PSAT 시기 · 7월 19일 시험' : '2차 시기 · 10월 15일 시험',
+            style: theme.textTheme.titleSmall?.copyWith(color: DailyPalette.ink),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LadderCard extends StatelessWidget {
+  final int currentWeek;
+  const _LadderCard({required this.currentWeek});
+
+  static const _weeks = <Map<String, String>>[
+    {'w': 'W1', 'p': '5/5~5/11', 'k': '적응기', 'wake': '07:30', 'study': '5h', 'note': '야행 회복 · T1 4h만 deliberate'},
+    {'w': 'W2', 'p': '5/12~5/18', 'k': '안정기', 'wake': '07:00', 'study': '8h', 'note': 'T1·T2 풀가동 + T3 light 시작'},
+    {'w': 'W3', 'p': '5/19~5/25', 'k': '가속기', 'wake': '06:30', 'study': '10h', 'note': 'T3 진입 · 모의고사 주 3회'},
+    {'w': 'W4', 'p': '5/26~5/31', 'k': '정착 ★', 'wake': '06:30', 'study': '10~11h', 'note': 'routine 발효 · 시운전'},
+    {'w': 'W5+', 'p': '6/1~7/18', 'k': '발효', 'wake': '06:30', 'study': '10h', 'note': '6주 유지 → 7/19 1차 PSAT'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: DailyPalette.line),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          children: [
+            for (var i = 0; i < _weeks.length; i++)
+              _row(theme, _weeks[i], (i + 1) == currentWeek, i == _weeks.length - 1),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _row(ThemeData theme, Map<String, String> w, bool active, bool isLast) {
+    return Container(
+      decoration: BoxDecoration(
+        color: active ? DailyPalette.goldSurface : null,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(12),
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 12, height: 12, margin: const EdgeInsets.only(top: 4, right: 12),
+            decoration: BoxDecoration(
+              color: active ? DailyPalette.gold : DailyPalette.line,
+              shape: BoxShape.circle,
+            ),
+          ),
           Expanded(
-            child: Text(
-              '공부 진도는 STUDY 앱에서 확인. 데일리 앱은 일상(수면·루틴·식사) 만 다룬다.',
-              style: TextStyle(fontSize: 11, color: DailyPalette.slate, height: 1.4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(w['w']!, style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: active ? DailyPalette.gold : DailyPalette.ink,
+                    )),
+                    const SizedBox(width: 8),
+                    Text(w['k']!, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    Text('${w['wake']} · ${w['study']}',
+                        style: theme.textTheme.bodySmall?.copyWith(color: DailyPalette.ash, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(w['p']!, style: theme.textTheme.bodySmall?.copyWith(color: DailyPalette.ash, fontSize: 11)),
+                const SizedBox(height: 2),
+                Text(w['note']!, style: theme.textTheme.bodySmall),
+              ],
             ),
           ),
         ],
@@ -78,280 +183,123 @@ class _DomainNote extends StatelessWidget {
   }
 }
 
-class _Routine14 extends StatelessWidget {
-  const _Routine14();
+class _PhaseCard extends StatelessWidget {
+  final String label;
+  final String period;
+  final String total;
+  final String t1, t2, t3;
+  final bool active;
+
+  const _PhaseCard({
+    required this.label,
+    required this.period,
+    required this.total,
+    required this.t1,
+    required this.t2,
+    required this.t3,
+    required this.active,
+  });
+
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final start = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 13));
-    final startKey = DateFormat('yyyy-MM-dd').format(start);
-    final endKey = DateFormat('yyyy-MM-dd').format(today);
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users').doc(kUid).collection('routine')
-          .where(FieldPath.documentId, isGreaterThanOrEqualTo: startKey)
-          .where(FieldPath.documentId, isLessThanOrEqualTo: endKey)
-          .snapshots(),
-      builder: (ctx, snap) {
-        final byDay = <String, double>{};
-        for (int i = 0; i < 14; i++) {
-          final d = start.add(Duration(days: i));
-          byDay[DateFormat('yyyy-MM-dd').format(d)] = 0.0;
-        }
-        for (final d in snap.data?.docs ?? []) {
-          final m = d.data();
-          final steps = m['steps'];
-          if (steps is List && steps.isNotEmpty) {
-            final done = steps.whereType<Map>().where((s) => s['done'] == true).length;
-            byDay[d.id] = done / steps.length;
-          }
-        }
-        final avg = byDay.values.fold<double>(0, (a, b) => a + b) / byDay.length;
-        return Container(
-          padding: const EdgeInsets.all(DailySpace.lg),
-          decoration: BoxDecoration(
-            color: DailyPalette.card,
-            borderRadius: BorderRadius.circular(DailySpace.radiusL),
-            border: Border.all(color: DailyPalette.line),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.checklist, size: 18, color: DailyPalette.primary),
-                  const SizedBox(width: 6),
-                  const Text('루틴 달성률 14일', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
-                  const Spacer(),
-                  Text('평균 ${(avg * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(fontSize: 11, color: DailyPalette.ash, fontWeight: FontWeight.w700)),
-                ],
-              ),
-              const SizedBox(height: DailySpace.md),
-              SizedBox(
-                height: 24,
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: active ? DailyPalette.gold : DailyPalette.line, width: active ? 2 : 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(label,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: active ? DailyPalette.gold : DailyPalette.ink,
+                      )),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: active ? DailyPalette.gold : DailyPalette.line,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(total,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: active ? Colors.white : DailyPalette.ash,
+                        fontWeight: FontWeight.w700,
+                      )),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(period, style: theme.textTheme.bodySmall?.copyWith(color: DailyPalette.ash)),
+            const SizedBox(height: 12),
+            Text(t1, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 4),
+            Text(t2, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 4),
+            Text(t3, style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutineCard extends StatelessWidget {
+  const _RoutineCard();
+
+  static const _slots = <List<String>>[
+    ['06:30', '기상 + 광노출 5분', '🌅'],
+    ['06:50', '아침 30분 (소음인)', '🍚'],
+    ['07:30', 'T1 deliberate 4h', '📚'],
+    ['12:30', '점심 30분 + 산책', '🍱'],
+    ['13:00', 'T2 review 4h', '📖'],
+    ['17:00', '운동 30분 (홈 스트레칭)', '🤸'],
+    ['18:00', '저녁 30분', '🍽'],
+    ['19:00', 'T3 light 2~4h', '✏️'],
+    ['22:30', '생활 정리 30분', '🧼'],
+    ['23:00', '디지털 일기 (D5)', '📝'],
+    ['23:30', '취침 (W4 = 23:00)', '🌙'],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: DailyPalette.line),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            for (final s in _slots)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
-                  children: List.generate(14, (i) {
-                    final d = start.add(Duration(days: i));
-                    final key = DateFormat('yyyy-MM-dd').format(d);
-                    final r = byDay[key] ?? 0.0;
-                    Color c;
-                    if (r >= 1.0) {
-                      c = DailyPalette.success;
-                    } else if (r >= 0.6) {
-                      c = DailyPalette.gold;
-                    } else if (r > 0.0) {
-                      c = DailyPalette.gold.withValues(alpha: 0.4);
-                    } else {
-                      c = DailyPalette.line;
-                    }
-                    return Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                        decoration: BoxDecoration(
-                          color: c,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    );
-                  }),
+                  children: [
+                    SizedBox(
+                      width: 60,
+                      child: Text(s[0], style: theme.textTheme.bodySmall?.copyWith(
+                        color: DailyPalette.gold, fontWeight: FontWeight.w700, fontFamily: 'monospace',
+                      )),
+                    ),
+                    Text('${s[2]}  ', style: theme.textTheme.bodyMedium),
+                    Expanded(child: Text(s[1], style: theme.textTheme.bodyMedium)),
+                  ],
                 ),
               ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(DateFormat('M/d').format(start), style: const TextStyle(fontSize: 9, color: DailyPalette.ash)),
-                  Text(DateFormat('M/d').format(today), style: const TextStyle(fontSize: 9, color: DailyPalette.ash)),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// 수면 위상 14일 — sleep bar 시각화 (트렌디·깔끔, 사용자 17:24 지시).
-/// 24h timeline X축 + 취침~기상 sleep window 가로 bar.
-class _SleepPhase14 extends StatelessWidget {
-  const _SleepPhase14();
-  @override
-  Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final start = DateTime(today.year, today.month, today.day).subtract(const Duration(days: 13));
-    final startKey = DateFormat('yyyy-MM-dd').format(start);
-    final endKey = DateFormat('yyyy-MM-dd').format(today);
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users').doc(kUid).collection('life_logs')
-          .where(FieldPath.documentId, isGreaterThanOrEqualTo: startKey)
-          .where(FieldPath.documentId, isLessThanOrEqualTo: endKey)
-          .snapshots(),
-      builder: (ctx, snap) {
-        final wakeMap = <String, double>{}, sleepMap = <String, double>{};
-        for (final d in snap.data?.docs ?? []) {
-          final m = d.data();
-          if (m['wake'] is Map && m['wake']['time'] is String) {
-            wakeMap[d.id] = _toHourFrac(m['wake']['time']);
-          }
-          if (m['sleep'] is Map && m['sleep']['time'] is String) {
-            sleepMap[d.id] = _toHourFrac(m['sleep']['time']);
-          }
-        }
-
-        return Container(
-          padding: const EdgeInsets.all(DailySpace.lg),
-          decoration: BoxDecoration(
-            color: DailyPalette.card,
-            borderRadius: BorderRadius.circular(DailySpace.radiusL),
-            border: Border.all(color: DailyPalette.line),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.bedtime_rounded, size: 18, color: DailyPalette.primary),
-                  SizedBox(width: 6),
-                  Text('수면 위상 14일', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: DailyPalette.ink)),
-                  Spacer(),
-                  Text('취침→기상 사이 어두운 bar', style: TextStyle(fontSize: 9, color: DailyPalette.ash)),
-                ],
-              ),
-              const SizedBox(height: DailySpace.md),
-              // 24h hour markers
-              _hourAxis(),
-              const SizedBox(height: 4),
-              ...List.generate(14, (i) {
-                final d = start.add(Duration(days: i));
-                final key = DateFormat('yyyy-MM-dd').format(d);
-                final isToday = i == 13;
-                // 취침 = 어제 sleep[d-1] (그 날 wake → 다음 날 wake 사이 sleep 의 *시작*)
-                // 단순화: sleep[d-1] = 그 날 밤 취침, wake[d] = 그 날 아침 기상.
-                final prevKey = DateFormat('yyyy-MM-dd').format(d.subtract(const Duration(days: 1)));
-                final bedHour = sleepMap[prevKey];
-                final wakeHour = wakeMap[key];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 1),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 46,
-                        child: Text(DateFormat('M/d E', 'ko').format(d),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: isToday ? DailyPalette.primary : DailyPalette.ash,
-                              fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
-                            )),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(child: _bar(bedHour, wakeHour, isToday)),
-                    ],
-                  ),
-                );
-              }),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  static double _toHourFrac(String t) {
-    // "01:30+1" = 다음날 1.5시
-    final parts = t.split('+');
-    final next = parts.length > 1;
-    final hm = parts[0].split(':');
-    final h = double.tryParse(hm[0]) ?? 0;
-    final m = hm.length > 1 ? (double.tryParse(hm[1]) ?? 0) : 0;
-    return h + m / 60 + (next ? 24 : 0);
-  }
-
-  Widget _hourAxis() {
-    return SizedBox(
-      height: 12,
-      child: Row(
-        children: [
-          const SizedBox(width: 52),
-          Expanded(
-            child: Stack(
-              children: List.generate(7, (i) {
-                final hour = i * 4;
-                return Positioned(
-                  left: (hour / 24) * 1000.0 / 1000 * 0,  // 정확한 left 계산은 LayoutBuilder 필요
-                  child: const SizedBox.shrink(),
-                );
-              })..addAll([
-                LayoutBuilder(builder: (ctx, c) {
-                  return SizedBox(
-                    width: c.maxWidth, height: 12,
-                    child: Stack(children: List.generate(7, (i) {
-                      final hour = i * 4;
-                      return Positioned(
-                        left: (hour / 24) * c.maxWidth - 6,
-                        child: Text('$hour시',
-                            style: const TextStyle(fontSize: 8, color: DailyPalette.ash)),
-                      );
-                    })),
-                  );
-                }),
-              ]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _bar(double? bedHour, double? wakeHour, bool isToday) {
-    return LayoutBuilder(builder: (ctx, c) {
-      final w = c.maxWidth;
-      // 24시간 = w 픽셀.
-      // bedHour = 전날 취침. 기준: 전날 18시 ~ 그날 18시 윈도우 (또는 단순 그날 0~24).
-      // 여기선 그날 0~24h 을 X축으로 하되, bedHour 가 0~6 또는 21~30 이면 그래프에 표현.
-      final segments = <Widget>[];
-      // sleep bar: bedHour 가 어제 저녁 (예: 23~28h normalized). bedHour 의 시각 = wake 까지.
-      if (bedHour != null && wakeHour != null) {
-        // bedHour 를 그날 시각으로 normalize: 24 이상이면 그대로, 미만이면 그대로
-        // 단순화: bed = bedHour mod 24; 그날 새벽 wake 까지 = 0~wake. 그 전 = bed~24.
-        double bedNorm = bedHour;
-        if (bedNorm >= 24) bedNorm -= 24;
-        // 새벽 sleep (bedNorm < wake) = single bar bedNorm~wake
-        // 또는 전날 늦게 자서 bedNorm > wake = 두 bar (bedNorm~24, 0~wake)
-        if (bedNorm < wakeHour) {
-          segments.add(_seg(bedNorm / 24, (wakeHour - bedNorm) / 24, w));
-        } else {
-          segments.add(_seg(0, wakeHour / 24, w));
-          segments.add(_seg(bedNorm / 24, (24 - bedNorm) / 24, w));
-        }
-      } else if (wakeHour != null) {
-        // wake 만 있음 = wake 점만
-        segments.add(_seg(wakeHour / 24 - 0.005, 0.01, w, color: DailyPalette.gold));
-      }
-
-      return Container(
-        height: 14,
-        decoration: BoxDecoration(
-          color: DailyPalette.paper,
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: isToday ? DailyPalette.primary : DailyPalette.line, width: isToday ? 1.2 : 0.8),
-        ),
-        child: Stack(children: segments),
-      );
-    });
-  }
-
-  Widget _seg(double leftFrac, double widthFrac, double totalW, {Color? color}) {
-    return Positioned(
-      left: leftFrac * totalW,
-      child: Container(
-        height: 12,
-        width: (widthFrac * totalW).clamp(2.0, totalW),
-        decoration: BoxDecoration(
-          color: color ?? DailyPalette.primary.withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(2),
+          ],
         ),
       ),
     );

@@ -929,6 +929,31 @@ exports.checkDoorManual = functions.https.onRequest(async (req, res) => {
       return;
     }
 
+    // ═══ self-care log (자위 기록) ═══
+    // ?q=self_care&action=add&type=M&mode=EL&context=...&video=false
+    // 사용자 명시 (2026-05-04 05:04 KST): 앱 self_care_log 동기화.
+    if (req.query.q === "self_care") {
+      const action = req.query.action;
+      if (action !== "add") { res.status(400).json({error: "action must be 'add'"}); return; }
+      const type = req.query.type || "M";
+      const mode = req.query.mode || "EL";
+      const context_ = req.query.context || "";
+      const videoRecorded = req.query.video === "true";
+      const cleanupDone = req.query.cleanup !== "false";
+      const tsParam = req.query.ts;  // optional override
+      const now = tsParam ? new Date(tsParam) : new Date();
+      const ts = now.toISOString();
+      // KST date
+      const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const date = kst.toISOString().slice(0, 10);
+
+      const docRef = await db.collection("users").doc(UID).collection("self_care_log").add({
+        date, ts, type, mode, context: context_, video_recorded: videoRecorded, cleanup_done: cleanupDone,
+      });
+      res.status(200).json({ok: true, id: docRef.id, date, ts});
+      return;
+    }
+
     // ═══ 습관 체크 ═══
     // ?q=habit&action=check&habitId=abc123&date=2026-03-24
     if (req.query.q === "habit") {
@@ -2699,5 +2724,122 @@ exports.gosiNotice = functions.https.onRequest(async (req, res) => {
   } catch(e) {
     console.error("gosiNotice error:", e.message);
     res.status(500).json({ok: false, error: e.message});
+  }
+});
+
+// ═══ HB v13: Daily Log 자동 이관 (사용자 5/5 02:33 + HQ 1936 결재) ═══
+// 매일 23:30 KST: ST 학습 데이터 + HQ 일상 데이터 → users/{UID}/daily_log/{yyyy-MM-dd}
+// 누락 시 텔레그램 alert.
+
+async function pullSTSummary(dateKey) {
+  // ST 도메인 학습 데이터 (cheonhong-study Firestore + ST output 파일).
+  // 임시: ST 측 데이터 미연결 → null fallback.
+  // 후속 (별도 합의): cheonhong-study Firestore 권한 확보 후 직접 read.
+  return {
+    cards_added: 0,
+    answers_written: 0,
+    summary: "ST 측 직접 연결 대기 (별도 합의)",
+    pulled_at: admin.firestore.FieldValue.serverTimestamp(),
+  };
+}
+
+async function pullHQSummary(dateKey) {
+  // HQ 도메인 일상 데이터.
+  // location_logger.py + situation_board.md 통합.
+  // 임시: timeRecords 컬렉션에서 그날 wake/outing/meal 추출.
+  try {
+    const tr = await db.collection(`users/${UID}/timeRecords`).doc(dateKey).get();
+    if (!tr.exists) {
+      return {
+        location: "기록 없음",
+        outings: [],
+        summary: "HQ 측 timeRecords 없음",
+        pulled_at: admin.firestore.FieldValue.serverTimestamp(),
+      };
+    }
+    const data = tr.data();
+    const outings = (data.outings || []).map((o) => o.go).filter(Boolean);
+    return {
+      wake_time: data.wake_time || null,
+      sleep_time: data.sleep_time || null,
+      outings: outings,
+      meal_count: (data.meals || []).length,
+      summary: `외출 ${outings.length}회 · 식사 ${(data.meals || []).length}회`,
+      pulled_at: admin.firestore.FieldValue.serverTimestamp(),
+    };
+  } catch (e) {
+    return {error: e.message, pulled_at: admin.firestore.FieldValue.serverTimestamp()};
+  }
+}
+
+async function dailyImportLogic(targetDate) {
+  // targetDate = "yyyy-MM-dd" or null = 오늘
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const dateKey = targetDate || now.toISOString().slice(0, 10);
+
+  const [stData, hqData] = await Promise.all([
+    pullSTSummary(dateKey),
+    pullHQSummary(dateKey),
+  ]);
+
+  await db.doc(`users/${UID}/daily_log/${dateKey}`).set({
+    imported_st: stData,
+    imported_hq: hqData,
+    last_import_at: admin.firestore.FieldValue.serverTimestamp(),
+  }, {merge: true});
+
+  return {date: dateKey, st: stData, hq: hqData};
+}
+
+// 매일 23:30 KST cron — 자동 이관
+exports.dailyLogImport = functions.pubsub
+  .schedule("30 23 * * *")
+  .timeZone("Asia/Seoul")
+  .onRun(async () => {
+    try {
+      const result = await dailyImportLogic(null);
+      console.log("dailyLogImport:", JSON.stringify(result));
+    } catch (err) {
+      console.error("dailyLogImport error:", err.message);
+      await axios.post("https://api.telegram.org/bot" + MY_BOT_TOKEN + "/sendMessage",
+        {chat_id: MY_CHAT_ID, text: "⚠ HB daily_log 이관 실패\n" + err.message}).catch(() => {});
+    }
+    return null;
+  });
+
+// 수동 실행 endpoint
+exports.dailyLogImportManual = functions.https.onRequest(async (req, res) => {
+  try {
+    const date = req.query.date || null;
+    const result = await dailyImportLogic(date);
+    res.status(200).json({ok: true, ...result});
+  } catch (err) {
+    res.status(500).json({ok: false, error: err.message});
+  }
+});
+
+// HB sleep_logger.py에서 호출하는 endpoint (취침·기상 데이터 등재)
+exports.sleepLog = functions.https.onRequest(async (req, res) => {
+  try {
+    const {date, sleep_ts, wake_ts, duration_min, source} = req.query.q === "set"
+      ? req.query
+      : req.body;
+    if (!date) {
+      res.status(400).json({ok: false, error: "date required"});
+      return;
+    }
+    await db.doc(`users/${UID}/daily_log/${date}`).set({
+      habits: {
+        sleep_time: sleep_ts || null,
+        wake_time: wake_ts || null,
+        sleep_duration_min: duration_min ? parseInt(duration_min) : null,
+        source: source || "adb_usagestats",
+        logged_at: admin.firestore.FieldValue.serverTimestamp(),
+      },
+    }, {merge: true});
+    res.json({ok: true, date});
+  } catch (err) {
+    console.error("sleepLog error:", err.message);
+    res.status(500).json({ok: false, error: err.message});
   }
 });
