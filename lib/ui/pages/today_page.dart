@@ -348,40 +348,4 @@ class _HeroToday extends StatelessWidget {
       );
 }
 
-/// Quick stats — 4-grid (수면·식사·외출·Detox).
-class _QuickStats extends StatelessWidget {
-  const _QuickStats();
-
-  @override
-  Widget build(BuildContext context) {
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final ref = FirebaseFirestore.instance.doc('users/$kUid/life_logs/$today');
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: ref.snapshots(),
-      builder: (ctx, snap) {
-        final data = snap.data?.data() ?? {};
-        final wake = (data['wake'] as Map?)?['time']?.toString() ?? '—';
-        final sleep = (data['sleep'] as Map?)?['time']?.toString() ?? '—';
-        final mealsCount = (data['meals'] as List?)?.length ?? 0;
-        final outingCount = (data['outing'] as List?)?.length ?? 0;
-        final mediaList = data['media'] as List?;
-        final mediaTotal = mediaList?.fold<int>(0, (a, b) => a + ((b is Map ? b['duration_min'] : 0) as num? ?? 0).toInt()) ?? 0;
-
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.6,
-          children: [
-            StatCard(label: '기상 / 취침', value: wake, sub: '취침 $sleep', icon: Icons.wb_sunny_outlined, accent: DailyPalette.gold),
-            StatCard(label: '식사', value: '$mealsCount회', sub: '오늘 등재', icon: Icons.restaurant_outlined, accent: DailyPalette.success),
-            StatCard(label: '외출', value: '$outingCount회', sub: 'outing 토글', icon: Icons.directions_walk_outlined, accent: DailyPalette.info),
-            StatCard(label: '미디어', value: '${mediaTotal}분', sub: '쇼츠 누적', icon: Icons.smart_display_outlined, accent: DailyPalette.craving),
-          ],
-        );
-      },
-    );
-  }
-}
+// _QuickStats 폐기 (v13 재구성 시) — 진도 카드·이관 카드로 대체. 2026-05-05.
