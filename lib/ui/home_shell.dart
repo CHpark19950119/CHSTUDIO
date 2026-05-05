@@ -3,10 +3,9 @@ import '../theme/theme.dart';
 import 'pages/today_page.dart';
 import 'pages/records_page.dart';
 import 'pages/plan_page.dart';
-import 'pages/diary_page.dart';
 import 'pages/settings_page.dart';
 
-/// DAILY HomeShell · 4탭 v13 (사용자 5/5 02:33 + 05:01 명시 · 단순화 / self_care 흡수 / 일기 신규)
+/// DAILY HomeShell · 3탭 v13.1 (사용자 5/5 14:35 명시 = 일기 X / 더 단순)
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
 
@@ -20,7 +19,6 @@ class _HomeShellState extends State<HomeShell> {
     TodayPage(),
     RecordsPage(),
     PlanPage(),
-    DiaryPage(),
   ];
 
   void _openSettings() {
@@ -49,10 +47,9 @@ class _HomeShellState extends State<HomeShell> {
         backgroundColor: DailyPalette.paper,
         indicatorColor: DailyPalette.goldSurface,
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.wb_sunny_outlined), selectedIcon: Icon(Icons.wb_sunny), label: '오늘'),
+          NavigationDestination(icon: Icon(Icons.check_box_outlined), selectedIcon: Icon(Icons.check_box), label: '오늘'),
           NavigationDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: '기록'),
           NavigationDestination(icon: Icon(Icons.timeline_outlined), selectedIcon: Icon(Icons.timeline), label: '계획'),
-          NavigationDestination(icon: Icon(Icons.edit_note_outlined), selectedIcon: Icon(Icons.edit_note), label: '일기'),
         ],
       ),
     );

@@ -1,13 +1,11 @@
-// DAILY 오늘 탭 — 일상 dashboard (사용자 명시 2026-05-01 14:32 = 공부 관련 전부 제거).
-// v13 재구성 (사용자 5/5 02:33 + 05:01) — Hero + 진도 + 습관 + 이관 + self_care FAB.
+// DAILY 오늘 탭 v13.1 — 사용자 5/5 14:35 명시
+// 매우 단순화: 헤더 + 매일 계획 체크박스 12 항목 + self_care 빠른 기록 FAB.
+// 진도 카드·이관 카드·일정 카드 = 제거. 체크박스만.
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../app/app.dart';
 import '../../theme/theme.dart';
-import '../widgets/common.dart';
-import '../widgets/routine_checklist.dart';
-import '../widgets/today_timeline.dart';
 import 'self_care_page.dart';
 
 class TodayPage extends StatelessWidget {
@@ -15,7 +13,6 @@ class TodayPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: DailyPalette.gold,
@@ -27,325 +24,188 @@ class TodayPage extends StatelessWidget {
         },
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async => await Future.delayed(const Duration(milliseconds: 300)),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
-            children: [
-              const _HeroToday(),
-              const SizedBox(height: DailySpace.lg),
-              SectionHeader(title: '오늘의 진도', accent: DailyPalette.gold),
-              const SizedBox(height: DailySpace.sm),
-              const _StudyProgressCard(),
-              const SizedBox(height: DailySpace.lg),
-              SectionHeader(title: '오늘의 습관', accent: theme.colorScheme.primary),
-              const SizedBox(height: DailySpace.sm),
-              const RoutineChecklist(),
-              const SizedBox(height: DailySpace.lg),
-              SectionHeader(title: 'ST·HQ 자동 이관', accent: DailyPalette.gold),
-              const SizedBox(height: DailySpace.sm),
-              const _ImportSourcesCard(),
-              const SizedBox(height: DailySpace.lg),
-              SectionHeader(title: '오늘 일정', accent: theme.colorScheme.primary),
-              const SizedBox(height: DailySpace.sm),
-              const TodayTimeline(),
-            ],
-          ),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+          children: const [
+            _Header(),
+            SizedBox(height: 20),
+            _RoutineChecklist(),
+          ],
         ),
       ),
     );
   }
 }
 
-/// 학업 진도 카드 — T1 / T2 / T3 progress bar (Phase 1 = 10h / Phase 2 = 12h).
-class _StudyProgressCard extends StatelessWidget {
-  const _StudyProgressCard();
+class _Header extends StatelessWidget {
+  const _Header();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final examDate = DateTime(2026, 7, 19);
-    final dDay = examDate.difference(DateTime.now()).inDays;
-    // Phase: 5/5~7/19 = Phase 1 (1차 PSAT) / 8/15~10/15 = Phase 2 (2차).
-    final isPhase1 = DateTime.now().isBefore(DateTime(2026, 8, 15));
-    final t3Target = isPhase1 ? 120 : 240;
-    final phaseLabel = isPhase1 ? 'Phase 1 · 1차 PSAT (10h)' : 'Phase 2 · 2차 (12h)';
-
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('users/$kUid/daily_log').doc(today).snapshots(),
-      builder: (context, snap) {
-        final data = snap.data?.data() as Map<String, dynamic>? ?? {};
-        final progress = data['study_progress'] as Map<String, dynamic>? ?? {};
-        final t1 = (progress['t1'] as Map<String, dynamic>? ?? {})['actual_min'] as int? ?? 0;
-        final t2 = (progress['t2'] as Map<String, dynamic>? ?? {})['actual_min'] as int? ?? 0;
-        final t3 = (progress['t3'] as Map<String, dynamic>? ?? {})['actual_min'] as int? ?? 0;
-        final totalActual = t1 + t2 + t3;
-        final totalTarget = 240 + 240 + t3Target;
-
-        return Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: DailyPalette.line),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('D-$dDay · $phaseLabel',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: DailyPalette.gold, fontWeight: FontWeight.w600)),
-                    Text('${(totalActual / 60).toStringAsFixed(1)}h / ${(totalTarget / 60).toStringAsFixed(0)}h',
-                        style: theme.textTheme.bodySmall?.copyWith(color: DailyPalette.ash)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _progressRow(theme, 'T1 deliberate', t1, 240),
-                const SizedBox(height: 8),
-                _progressRow(theme, 'T2 review', t2, 240),
-                const SizedBox(height: 8),
-                _progressRow(theme, isPhase1 ? 'T3 light' : 'T3 deliberate', t3, t3Target),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _progressRow(ThemeData theme, String label, int actual, int target) {
-    final ratio = target > 0 ? (actual / target).clamp(0.0, 1.0) : 0.0;
-    final complete = actual >= target;
-    return Row(
-      children: [
-        SizedBox(width: 110, child: Text(label, style: theme.textTheme.bodyMedium)),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: ratio,
-              minHeight: 12,
-              backgroundColor: DailyPalette.line,
-              valueColor: AlwaysStoppedAnimation(complete ? Colors.green : DailyPalette.gold),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(complete ? '✓' : '${(ratio * 100).toStringAsFixed(0)}%',
-            style: theme.textTheme.bodySmall?.copyWith(color: complete ? Colors.green : DailyPalette.ash)),
-      ],
-    );
-  }
-}
-
-/// ST·HQ 자동 이관 카드 — 매일 23:30 cron pull.
-class _ImportSourcesCard extends StatelessWidget {
-  const _ImportSourcesCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-
-    return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('users/$kUid/daily_log').doc(today).snapshots(),
-      builder: (context, snap) {
-        final data = snap.data?.data() as Map<String, dynamic>? ?? {};
-        final st = data['imported_st'] as Map<String, dynamic>?;
-        final hq = data['imported_hq'] as Map<String, dynamic>?;
-
-        return Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: DailyPalette.line),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _sourceRow(theme, '🎓 ST 학습', st, '학습 카드·답안 작성 기록'),
-                const Divider(height: 24),
-                _sourceRow(theme, '📍 HQ 일상', hq, '위치·외출·만남 자동'),
-                const SizedBox(height: 8),
-                Text('자동 이관 = 매일 23:30 KST',
-                    style: theme.textTheme.bodySmall?.copyWith(color: DailyPalette.ash, fontSize: 11)),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _sourceRow(ThemeData theme, String label, Map<String, dynamic>? src, String fallback) {
-    final hasData = src != null && src.isNotEmpty;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(hasData ? Icons.check_circle : Icons.schedule, size: 18, color: hasData ? Colors.green : DailyPalette.ash),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 2),
-              Text(
-                hasData ? (src['summary']?.toString() ?? src.keys.take(3).join(' · ')) : fallback,
-                style: theme.textTheme.bodySmall?.copyWith(color: DailyPalette.ash),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-
-/// Hero · v12 luminous bento + 수면 위상 중심 (사용자 명시 2026-05-01 14:32 · 공부 도메인 제거).
-class _HeroToday extends StatelessWidget {
-  const _HeroToday();
-
-  @override
-  Widget build(BuildContext context) {
     final now = DateTime.now();
-    // 수면 위상 사다리 = plan v6.2 정합 (-30분/일 · D9 02:30 → D16 23:00)
-    final phase1Start = DateTime(2026, 4, 23); // D1
-    final dn = now.difference(DateTime(phase1Start.year, phase1Start.month, phase1Start.day)).inDays + 1;
-    String sleepTarget;
-    if (dn <= 9) {sleepTarget = '02:30';}
-    else if (dn == 10) {sleepTarget = '02:00';}
-    else if (dn == 11) {sleepTarget = '01:30';}
-    else if (dn == 12) {sleepTarget = '01:00';}
-    else if (dn == 13) {sleepTarget = '00:30';}
-    else if (dn == 14) {sleepTarget = '00:00';}
-    else if (dn == 15) {sleepTarget = '23:30';}
-    else {sleepTarget = '23:00';}
-    final wakeTarget = '+8h 후';
-    final dayLabel = DateFormat('M.d EEEE', 'ko').format(now);
+    final dateStr = DateFormat('yyyy년 M월 d일 (E)', 'ko_KR').format(now);
+    final dDay = DateTime(2026, 7, 19).difference(now).inDays;
+    final w1 = DateTime(2026, 5, 5);
+    final week = (now.difference(w1).inDays / 7).floor() + 1;
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(26, 32, 26, 28),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFF6E0), Color(0xFFFFEAC4), Color(0xFFF4D9A8)],
-          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [DailyPalette.goldSurface, DailyPalette.cream],
         ),
-        borderRadius: DailyV12Radius.card,
-        boxShadow: DailyV12Shadow.card(),
-        border: Border.all(color: DailyV12.bronze.withValues(alpha: 0.18), width: 1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DailyPalette.gold.withValues(alpha: 0.3)),
       ),
-      child: Stack(
-        clipBehavior: Clip.hardEdge,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(
-            right: -50, top: -50,
-            child: Container(
-              width: 220, height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [DailyV12.bronzeGlow, DailyV12.bronzeGlow.withValues(alpha: 0)],
-                ),
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Text(dateStr, style: theme.textTheme.bodyMedium?.copyWith(color: DailyPalette.ash, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
-              Row(
-                children: [
-                  Text(
-                    DateFormat('yyyy.MM.dd EEEE', 'ko').format(now),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DailyV12.bronzeDeep, letterSpacing: 1.2),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: DailyV12.bronze.withValues(alpha: 0.16),
-                      borderRadius: DailyV12Radius.capsule,
-                      border: Border.all(color: DailyV12.bronze.withValues(alpha: 0.55)),
-                    ),
-                    child: Text(
-                      '오늘 $dayLabel',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: DailyV12.bronzeDeep, letterSpacing: 0.4),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                '수면 위상 정진',
-                style: TextStyle(fontSize: 14, color: DailyV12.bronzeDeep, fontWeight: FontWeight.w800, letterSpacing: 0.5),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  ShaderMask(
-                    shaderCallback: (rect) => const LinearGradient(
-                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                      colors: [Color(0xFFB87020), Color(0xFF824A14), Color(0xFF5A3008)],
-                      stops: [0, 0.55, 1.0],
-                    ).createShader(rect),
-                    blendMode: BlendMode.srcIn,
-                    child: Text(
-                      sleepTarget,
-                      style: const TextStyle(
-                        fontSize: 64, fontWeight: FontWeight.w900,
-                        height: 0.95, letterSpacing: -2.4,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 10, bottom: 12),
-                    child: Text(
-                      '취침 목표',
-                      style: TextStyle(fontSize: 14, color: DailyV12.ink3, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '기상 = 취침 $wakeTarget · 광노출 산책 30m',
-                style: const TextStyle(fontSize: 13, color: DailyV12.ink2, height: 1.5, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 18),
-              Wrap(
-                spacing: 8, runSpacing: 8,
-                children: [
-                  _badge('일상', DailyV12.bronzeDeep),
-                  _badge('수면·식사·routine', DailyV12.bronze),
-                  _badge('학업 = ST 앱', DailyV12.ink3),
-                ],
-              ),
+              Text('D-$dDay',
+                  style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, color: DailyPalette.gold)),
+              const SizedBox(width: 12),
+              Text('· W$week 적응기',
+                  style: theme.textTheme.titleMedium?.copyWith(color: DailyPalette.ink, fontWeight: FontWeight.w600)),
             ],
           ),
         ],
       ),
     );
   }
-
-  Widget _badge(String text, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.13),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: color.withValues(alpha: 0.6), width: 1),
-        ),
-        child: Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: color)),
-      );
 }
 
-// _QuickStats 폐기 (v13 재구성 시) — 진도 카드·이관 카드로 대체. 2026-05-05.
+/// 매일 계획 체크박스 — plan v6.2 routine 1:1
+class _RoutineChecklist extends StatelessWidget {
+  const _RoutineChecklist();
+
+  // sortKey = 정렬용 / id = Firestore 키 / time / label / icon
+  static const _items = <Map<String, String>>[
+    {'id': 'wake', 'time': '06:30', 'label': '기상 + 광노출 5분', 'icon': '🌅'},
+    {'id': 'breakfast', 'time': '06:50', 'label': '아침 30분', 'icon': '🍚'},
+    {'id': 't1', 'time': '07:30', 'label': 'T1 deliberate 4h', 'icon': '📚'},
+    {'id': 'lunch', 'time': '12:30', 'label': '점심 + 산책', 'icon': '🍱'},
+    {'id': 't2', 'time': '13:00', 'label': 'T2 review 4h', 'icon': '📖'},
+    {'id': 'exercise', 'time': '17:00', 'label': '운동 30분 (홈 스트레칭)', 'icon': '🤸'},
+    {'id': 'shower', 'time': '17:30', 'label': '샤워·세면', 'icon': '🚿'},
+    {'id': 'dinner', 'time': '18:00', 'label': '저녁 30분', 'icon': '🍽'},
+    {'id': 't3', 'time': '19:00', 'label': 'T3 light 2~4h', 'icon': '✏️'},
+    {'id': 'tidy', 'time': '22:30', 'label': '생활 정리 30분', 'icon': '🧼'},
+    {'id': 'sleep', 'time': '23:30', 'label': '취침 (W4 = 23:00)', 'icon': '🌙'},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final docRef = FirebaseFirestore.instance.collection('users/$kUid/daily_log').doc(today);
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: docRef.snapshots(),
+      builder: (ctx, snap) {
+        final data = snap.data?.data() as Map<String, dynamic>? ?? {};
+        final checks = (data['checks'] as Map<String, dynamic>? ?? {}).cast<String, dynamic>();
+        final doneCount = _items.where((it) => checks[it['id']] == true).length;
+
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: DailyPalette.line),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                  child: Row(
+                    children: [
+                      Text('오늘의 계획',
+                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                      const Spacer(),
+                      Text('$doneCount / ${_items.length}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                              color: DailyPalette.gold, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                for (final it in _items)
+                  _CheckRow(
+                    docRef: docRef,
+                    id: it['id']!,
+                    time: it['time']!,
+                    label: it['label']!,
+                    icon: it['icon']!,
+                    checked: checks[it['id']] == true,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CheckRow extends StatelessWidget {
+  final DocumentReference docRef;
+  final String id, time, label, icon;
+  final bool checked;
+  const _CheckRow({
+    required this.docRef,
+    required this.id,
+    required this.time,
+    required this.label,
+    required this.icon,
+    required this.checked,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => docRef.set({'checks': {id: !checked}}, SetOptions(merge: true)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Icon(
+              checked ? Icons.check_box : Icons.check_box_outline_blank,
+              color: checked ? DailyPalette.gold : DailyPalette.ash,
+              size: 26,
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 50,
+              child: Text(time,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: DailyPalette.gold,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'monospace',
+                  )),
+            ),
+            Text('$icon  ', style: const TextStyle(fontSize: 18)),
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  decoration: checked ? TextDecoration.lineThrough : null,
+                  color: checked ? DailyPalette.ash : DailyPalette.ink,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
