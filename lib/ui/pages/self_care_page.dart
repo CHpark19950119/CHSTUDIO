@@ -50,7 +50,7 @@ class _SelfCarePageState extends State<SelfCarePage> {
       appBar: AppBar(
         backgroundColor: DailyPalette.paper,
         elevation: 0,
-        title: const Text('self_care'),
+        title: const Text('self_care · v13.1.2'),
       ),
       body: SafeArea(
         child: ListView(
