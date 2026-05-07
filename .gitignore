@@ -43,3 +43,29 @@ _migration_backup/
 _icon_candidates/
 *.hprof
 conversation_archive/
+
+# Build artifacts (HQ cleanup 2026-05-07: 14GB bloat 방지)
+*.apk
+*.aab
+*.so
+*.dex
+*.dylib
+android/intermediates/
+android/.cxx/
+android/captures/
+.git.bloated*/
+
+# Large media binaries
+*.mp4
+*.mov
+*.zip
+*.tar.gz
+*.7z
+
+# Flutter intermediates
+ios/Pods/
+ios/.symlinks/
+linux/build/
+windows/build/
+macos/build/
+
