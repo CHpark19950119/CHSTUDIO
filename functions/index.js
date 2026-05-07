@@ -2922,6 +2922,21 @@ exports.migrateSelfCare = functions.https.onRequest(async (req, res) => {
   }
 });
 
+exports.addSelfCare = functions.https.onRequest(async (req, res) => {
+  try {
+    const method = (req.query.method || "").trim();
+    if (!method) { res.status(400).json({error: "method required"}); return; }
+    const now = new Date();
+    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const date = req.query.date || kst.toISOString().slice(0, 10);
+    const ts = admin.firestore.Timestamp.fromDate(now);
+    const docRef = await db.collection(`users/${UID}/self_care_log`).add({date, ts, method});
+    res.json({ok: true, id: docRef.id, date, method, ts: now.toISOString()});
+  } catch (err) {
+    res.status(500).json({ok: false, error: err.message});
+  }
+});
+
 exports.deleteSelfCare = functions.https.onRequest(async (req, res) => {
   try {
     const ids = (req.query.ids || "").split(",").map((s) => s.trim()).filter(Boolean);
