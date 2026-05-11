@@ -31,7 +31,8 @@ $p.Close()
 """
     subprocess.run(
         ["powershell", "-NoProfile", "-Command", ps_script],
-        capture_output=True, timeout=30
+        capture_output=True, timeout=30,
+        creationflags=0x08000000,  # CREATE_NO_WINDOW — 콘솔 깜빡임 방지. 5/11 23:28 사용자 결재.
     )
     print(f"[TTS] {text}")
 

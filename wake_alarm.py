@@ -1,5 +1,5 @@
 """기상 알람 — PL7 연결 + TTS로 깨우기"""
-import subprocess, ctypes, os, tempfile, time
+import ctypes, os, tempfile, time
 from openai import OpenAI
 
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "")
@@ -28,14 +28,9 @@ def play(path):
         except: break
     mci("close wake")
 
-# 1. PL7 블루투스 활성화
-subprocess.run(
-    ["powershell", "-Command",
-     "Start-Process powershell -Verb RunAs -ArgumentList '-Command', "
-     "'Get-PnpDevice -FriendlyName \"LG-PL7*\" | ForEach-Object { Enable-PnpDevice -InstanceId $_.InstanceId -Confirm:$false }'"],
-    capture_output=True, creationflags=0x08000000
-)
-time.sleep(5)  # 블루투스 연결 대기
+# 1. PL7 블루투스 활성화 — 사용자 5/11 23:28 결재 OK 로 제거.
+# 사유: Start-Process Verb RunAs = UAC 다이얼로그 + elevated PowerShell 가시 창 강제.
+# 녹화·작업 중 popup 위반. 대안 = PL7 사전 수동 활성 또는 adb·CHSTUDIO MCP bt_connect('pl7') 사용.
 
 # 2. TTS 생성
 client = OpenAI(api_key=OPENAI_KEY)
